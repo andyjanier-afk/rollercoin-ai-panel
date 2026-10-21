@@ -6,8 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 // ==========================================
 const SUPABASE_URL = 'https://khyuzutnvoqeqkllnsmy.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Z9NzjlREhW6RgIqQ3zZ58A_5G6ivYHX';
-const FASTAPI_URL = 'http://localhost:8000';
-
+const FASTAPI_URL = 'https://rollercoin-ai-backend.onrender.com';
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ==========================================
