@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = 'https://khyuzutnvoqeqkllnsmy.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Z9NzjlREhW6RgIqQ3zZ58A_5G6ivYHX';
 const FASTAPI_URL = 'https://rollercoin-ai-backend.onrender.com';
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ==========================================
@@ -96,7 +97,7 @@ const calcularExitoJuego = (stats, dificultadMapa, bonoHamster) => {
 };
 
 // ==========================================
-// COMPONENTES
+// COMPONENTES DE UI
 // ==========================================
 function BuscadorHamster({ valorActual, onSelect }) {
   const [busqueda, setBusqueda] = useState(valorActual);
@@ -161,7 +162,7 @@ function SelectorMapa({ valorActual, onSelect }) {
 
 function RollerCard({ mapa, hamsterName, stats, nivel, probabilidad, viveIA, onAction, actionLabel, isPreview, bonoManual }) {
   const hamsterObj = HAMSTERS_DEFAULT.find(h => h.nombre === hamsterName) || HAMSTERS_DEFAULT[0];
-  const colorBoton = isPreview ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : (viveIA === 'SI' ? 'linear-gradient(135deg, #16a34a, #22c55e)' : 'linear-gradient(135deg, #dc2626, #ef4444)');
+  const colorBoton = isPreview ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 'linear-gradient(135deg, #7c3aed, #9333ea)';
   const imagenCalculada = isPreview || hamsterName ? getImagenEvolucion(hamsterObj.slug, nivel) : '';
   const bonoAMostrar = bonoManual !== undefined ? bonoManual : hamsterObj.bono;
 
@@ -232,6 +233,9 @@ export default function App() {
   const [resumenHamsters, setResumenHamsters] = useState([]);
   const [simulacion, setSimulacion] = useState(null); 
   
+  // Estado para el Modal Personalizado
+  const [modalConfig, setModalConfig] = useState({ isOpen: false, type: '', id: null, title: '', message: '', onConfirm: null });
+
   const hoy = new Date().toISOString().split('T')[0];
   const formPorDefecto = { fecha: hoy, hamster: "Cuscuz", nivel: 50, stats: 255, expedicion: '30h', porcentaje: '74.71', bono: 0 };
 
@@ -302,11 +306,24 @@ export default function App() {
         body: JSON.stringify({ hamster: form.hamster, stats: Number(form.stats), expedicion: form.expedicion, porcentaje: porcentajeFix })
       });
       setSimulacion(await res.json());
-    } catch(err) { alert('Error: Asegúrate de tener FastAPI encendido en la terminal'); }
+    } catch(err) { alert('Error: Asegúrate de que el backend en Render esté activo.'); }
   };
 
-  const guardar = async (e) => {
+  // --- LÓGICA DE GUARDAR (MODAL) ---
+  const confirmarGuardar = (e) => {
     if(e) e.preventDefault();
+    const mapaSelec = MAPAS_OFICIALES.find(m => m.valor === form.expedicion)?.nombre || form.expedicion;
+    setModalConfig({
+      isOpen: true,
+      type: 'send',
+      title: '🚀 ENVIAR EXPEDICIÓN',
+      message: `¿Confirmas que deseas enviar a ${form.hamster} a la expedición de ${mapaSelec}? Esto prevendrá envíos duplicados.`,
+      onConfirm: ejecutarGuardar
+    });
+  };
+
+  const ejecutarGuardar = async () => {
+    setModalConfig({ ...modalConfig, isOpen: false }); // Cerrar modal
     const nivelFinal = form.nivel === '' ? 1 : form.nivel;
     const porcentajeLimpio = parseFloat(String(form.porcentaje).replace(',', '.').replace('%', ''));
 
@@ -315,8 +332,6 @@ export default function App() {
     if (simulacion) {
       nuevaExpedicion.probabilidad_ia = simulacion.probabilidad_ia;
       nuevaExpedicion.vive_ia = simulacion.vive_ia;
-      nuevaExpedicion.fatiga_hamster = simulacion.fatiga_hamster;
-      nuevaExpedicion.racha_actual = simulacion.racha_actual;
     }
 
     let res = await supabase.from('expediciones').insert([nuevaExpedicion]);
@@ -327,19 +342,33 @@ export default function App() {
     }
   };
 
+  // --- LÓGICA DE ELIMINAR (MODAL) ---
+  const confirmarEliminar = (id, hamsterName) => {
+    setModalConfig({
+      isOpen: true,
+      type: 'delete',
+      title: '⚠️ BORRAR REGISTRO',
+      message: `¿Estás completamente seguro de que deseas cancelar y borrar la expedición activa de ${hamsterName}? Esta acción no se puede deshacer.`,
+      onConfirm: () => ejecutarEliminar(id)
+    });
+  };
+
+  const ejecutarEliminar = async (id) => {
+    setModalConfig({ ...modalConfig, isOpen: false }); // Cerrar modal
+    await supabase.from('expediciones').delete().eq('id', id);
+    cargarDashboard();
+  };
+
   const finalizar = async (id, sobrevivio) => {
     await supabase.from('expediciones').update({ finalizado: sobrevivio }).eq('id', id);
     cargarDashboard();
   };
 
-  const eliminar = async (id) => {
-    if(!window.confirm('¿Borrar esta expedición?')) return;
-    await supabase.from('expediciones').delete().eq('id', id);
-    cargarDashboard();
-  };
-
   const mapaSeleccionado = MAPAS_OFICIALES.find(m => m.valor === form.expedicion) || MAPAS_OFICIALES[5];
 
+  // ==========================================
+  // ESTILOS GLOBALES Y MEDIA QUERIES
+  // ==========================================
   const cssGlobal = `
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #0b0d14; border-radius: 4px; }
@@ -359,11 +388,64 @@ export default function App() {
     .mini-card:hover { transform: translateY(-3px); border-color: #0ea5e9 !important; background: #1e2130; box-shadow: 0 8px 20px rgba(0,0,0,0.5); }
     
     .historial-item { display: grid; grid-template-columns: 2fr 1.5fr 1.5fr; background: #16192b; border: 1px solid #2a2d40; margin-bottom: 10px; padding: 15px 20px; border-radius: 8px; align-items: center; }
+
+    /* Clases Responsivas para Layout Móvil */
+    .form-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .card-container { display: flex; justify-content: center; align-items: center; }
+
+    @media (max-width: 768px) {
+      .form-grid { grid-template-columns: 1fr; gap: 30px; padding: 20px !important; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .card-container { width: 100%; }
+      .card-container > div { width: 100% !important; max-width: 320px; }
+      .historial-item { grid-template-columns: 1fr; gap: 15px; text-align: center; }
+      .historial-item > div { justify-content: center; text-align: center; }
+    }
+
+    /* Estilos del Modal Premium */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 1000; animation: fadeIn 0.2s ease-out; }
+    .modal-content { background: #1b1c2b; border: 1px solid #2a2d40; border-radius: 16px; padding: 25px; max-width: 380px; width: 90%; box-shadow: 0 25px 50px rgba(0,0,0,0.8); text-align: center; animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .modal-title { color: #fff; font-size: 18px; font-weight: 900; margin-top: 0; margin-bottom: 15px; letter-spacing: 1px; }
+    .modal-message { color: #cbd5e1; font-size: 14px; margin-bottom: 25px; line-height: 1.6; }
+    .modal-actions { display: flex; gap: 12px; justify-content: center; }
+    .modal-btn { flex: 1; padding: 14px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; border: none; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s; }
+    .btn-cancel { background: #2a2d40; color: #fff; border: 1px solid #3b4260; }
+    .btn-cancel:hover { background: #3b4260; }
+    .btn-confirm-delete { background: linear-gradient(135deg, #b91c1c, #dc2626); color: white; box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4); }
+    .btn-confirm-delete:hover { filter: brightness(1.1); transform: translateY(-2px); }
+    .btn-confirm-send { background: linear-gradient(135deg, #0284c7, #0ea5e9); color: white; box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4); }
+    .btn-confirm-send:hover { filter: brightness(1.1); transform: translateY(-2px); }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   `;
 
   return (
     <div style={styles.page}>
       <style>{cssGlobal}</style>
+      
+      {/* MODAL PERSONALIZADO */}
+      {modalConfig.isOpen && (
+        <div className="modal-overlay" onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">{modalConfig.title}</h3>
+            <p className="modal-message">{modalConfig.message}</p>
+            <div className="modal-actions">
+              <button className="modal-btn btn-cancel" onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}>
+                Cancelar
+              </button>
+              <button 
+                className={`modal-btn ${modalConfig.type === 'delete' ? 'btn-confirm-delete' : 'btn-confirm-send'}`} 
+                onClick={modalConfig.onConfirm}
+              >
+                {modalConfig.type === 'delete' ? 'Borrar' : 'Confirmar Envío'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={styles.container}>
         <div style={styles.navBar}>
           <h1 style={{ margin: 0, fontSize: '20px', color: '#fff', letterSpacing: '1px' }}>🐹 AI EXPEDITIONS CONTROL PANEL</h1>
@@ -397,7 +479,7 @@ export default function App() {
           </div>
         )}
 
-      {/* ========================================== */}
+        {/* ========================================== */}
         {/* PANEL DE RENDIMIENTO INDIVIDUAL (CARRUSEL) */}
         {/* ========================================== */}
         {resumenHamsters.length > 0 && (
@@ -424,11 +506,9 @@ export default function App() {
                       Winrate: {h.winrate}%
                     </div>
 
-                    {/* NUEVO: ETIQUETA DE RACHA INDIVIDUAL */}
                     <div style={{ marginTop: '6px', fontSize: '10px', fontWeight: 'bold', color: h.racha_tipo === 'VIVIÓ' ? '#4ade80' : '#f87171' }}>
                       {h.racha_tipo === 'VIVIÓ' ? '🔥' : '💔'} Racha: {h.racha_conteo} {h.racha_tipo}
                     </div>
-
                   </div>
                 )
               })}
@@ -437,7 +517,7 @@ export default function App() {
         )}
 
         {/* 1. SECCIÓN: FORMULARIO Y PREDICCIÓN */}
-        <div style={styles.gridFormulario}>
+        <div className="form-grid" style={styles.contenedorFormulario}>
           <div style={styles.controlPanel}>
             <h3 style={{ marginTop: 0, color: '#fff', letterSpacing: '1px' }}>DATOS DE LANZAMIENTO</h3>
             
@@ -447,7 +527,7 @@ export default function App() {
             <label style={styles.label}>SELECCIONAR MAPA</label>
             <SelectorMapa valorActual={form.expedicion} onSelect={(mapa) => recalcularTodo(form.hamster, form.nivel || 1, mapa, form.bono, false)} />
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+            <div className="stats-grid">
               <div>
                 <label style={styles.label}>NIVEL</label>
                 <input type="number" className="premium-input" value={form.nivel} onChange={manejarNivel} style={styles.input} />
@@ -468,7 +548,7 @@ export default function App() {
             <button className="btn-hover" onClick={simular} style={styles.btnSimular}>🔍 PREDECIR SUPERVIVENCIA (FAST API)</button>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div className="card-container">
             <RollerCard 
               mapa={mapaSeleccionado} 
               hamsterName={form.hamster} 
@@ -476,7 +556,7 @@ export default function App() {
               nivel={form.nivel} 
               probabilidad={simulacion ? simulacion.probabilidad_ia : null}
               viveIA={simulacion ? simulacion.vive_ia : null}
-              onAction={guardar}
+              onAction={confirmarGuardar} // Llama al Modal
               actionLabel="ENVIAR DE EXPEDICIÓN"
               isPreview={true}
               bonoManual={form.bono} 
@@ -500,9 +580,9 @@ export default function App() {
                     nivel={activa.nivel} 
                     probabilidad={activa.probabilidad_ia}
                     viveIA={activa.vive_ia}
-                    onAction={() => eliminar(activa.id)}
+                    onAction={() => confirmarEliminar(activa.id, activa.hamster)} // Llama al Modal
                     actionLabel="CANCELAR / BORRAR"
-                    isPreview={true}
+                    isPreview={false}
                     bonoManual={(HAMSTERS_DEFAULT.find(h => h.nombre === activa.hamster) || HAMSTERS_DEFAULT[0]).bono} 
                   />
                   <div style={{ display: 'flex', gap: '8px' }}>
@@ -568,7 +648,7 @@ const styles = {
   metricCard: { background: 'linear-gradient(135deg, #16192b, #11131f)', border: '1px solid #2a2d40', borderRadius: '12px', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: '0 8px 20px rgba(0,0,0,0.4)' },
   metricLabel: { color: '#94a3b8', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px' },
   metricVal: { color: '#fff', fontSize: '20px', fontWeight: '900' },
-  gridFormulario: { display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '40px', background: 'linear-gradient(135deg, #16192b, #11131f)', padding: '30px', borderRadius: '16px', border: '1px solid #2a2d40', boxSizing: 'border-box', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' },
+  contenedorFormulario: { background: 'linear-gradient(135deg, #16192b, #11131f)', padding: '30px', borderRadius: '16px', border: '1px solid #2a2d40', boxSizing: 'border-box', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' },
   controlPanel: { display: 'flex', flexDirection: 'column', gap: '15px' },
   label: { color: '#94a3b8', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1.5px', textTransform: 'uppercase' },
   input: { width: '100%', background: '#0b0d14', border: '1px solid #2a2d40', padding: '14px', borderRadius: '8px', color: '#e2e8f0', fontSize: '14px', outline: 'none', boxSizing: 'border-box', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)', transition: 'border-color 0.2s, box-shadow 0.2s' },
