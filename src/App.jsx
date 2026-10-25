@@ -14,6 +14,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 // DATOS BASE
 // ==========================================
 const HAMSTERS_DEFAULT = [
+{ nombre: "Jack O’Mine", baseStats: 220, bono: 0, slug: 'jack_omine', img: 'https://api.minaryganar.com/assets/rollercoin/hamsters/pets/jack_omine/lvl01/idle.png', nivelInicial: 1 },
   { nombre: "Uncle'Azoth", baseStats: 230, bono: 5, slug: 'uncle-azoth', img: 'https://api.minaryganar.com/assets/rollercoin/hamsters/pets/uncle-azoth/lvl30/idle.png', nivelInicial: 1 },
   { nombre: 'Sir Catch-a-Lot', baseStats: 215, bono: 0, slug: 'sir-catch-a-lot', img: 'https://api.minaryganar.com/assets/rollercoin/hamsters/pets/sir-catch-a-lot/lvl50/idle.png', nivelInicial: 50 },
   { nombre: 'Davy Coins', baseStats: 200, bono: 5, slug: 'davy-coins', img: 'https://api.minaryganar.com/assets/rollercoin/hamsters/pets/davy-coins/lvl50/idle.png', nivelInicial: 50 },
