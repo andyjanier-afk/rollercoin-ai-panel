@@ -188,7 +188,7 @@ function SelectorMapa({ valorActual, onSelect }) {
 
 function RollerCard({ mapa, hamsterName, stats, nivel, probabilidad, viveIA, onAction, actionLabel, isPreview, bonoManual, disabled = false }) {
   const hamsterObj = HAMSTERS_DEFAULT.find(h => h.nombre === hamsterName) || HAMSTERS_DEFAULT[0];
-  const colorBoton = isPreview ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 'linear-gradient(135deg, #7c3aed, #9333ea)';
+  const colorBoton = isPreview ? '#354574' : '#2b354a';
   const imagenCalculada = isPreview || hamsterName ? getImagenEvolucion(hamsterObj.slug, nivel) : '';
   const bonoAMostrar = bonoManual !== undefined ? bonoManual : hamsterObj.bono;
   const tienePrediccion = probabilidad !== null && probabilidad !== undefined && probabilidad !== '' && Number.isFinite(Number(probabilidad));
@@ -202,12 +202,12 @@ function RollerCard({ mapa, hamsterName, stats, nivel, probabilidad, viveIA, onA
 
       <div style={styles.rcFeatures}>
         <div style={styles.rcFeatureRow}>
-          <span style={styles.rcFeatureLabel}>Duration</span>
+          <span style={styles.rcFeatureLabel}>Duración</span>
           <div style={styles.rcBarContainer}><div style={{...styles.rcBarFill, width: `${(parseInt(mapa.horas)/30)*100}%`}}></div></div>
           <span style={styles.rcFeatureValue}>{mapa.horas}</span>
         </div>
         <div style={styles.rcFeatureRow}>
-          <span style={styles.rcFeatureLabel}>Difficulty</span>
+          <span style={styles.rcFeatureLabel}>Dificultad</span>
           <div style={styles.rcBarContainer}><div style={{...styles.rcBarFill, width: `${mapa.dificultad*10}%`}}></div></div>
           <span style={styles.rcFeatureValue}>{mapa.dificultad}</span>
         </div>
@@ -215,7 +215,7 @@ function RollerCard({ mapa, hamsterName, stats, nivel, probabilidad, viveIA, onA
 
       <div style={styles.rcHamsterBox}>
         <div style={styles.rcLevelBadge}>{nivel || 1}</div>
-        <div style={styles.rcIconTopRight}>🤖</div>
+        <div style={styles.rcIconTopRight}>AI</div>
         <div style={styles.rcHamsterName}>{hamsterName}</div>
         
         <div style={{ display: 'flex', gap: '5px', marginBottom: '8px' }}>
@@ -230,7 +230,7 @@ function RollerCard({ mapa, hamsterName, stats, nivel, probabilidad, viveIA, onA
         
         {tienePrediccion ? (
           <div style={styles.rcTimerPill}>
-            PROB IA: <span style={{ color: viveIA === 'SI' ? '#4ade80' : '#f87171' }}>{probabilidad}%</span>
+            PROB. IA <span style={{ color: viveIA === 'SI' ? '#4ade80' : '#f87171' }}>{probabilidad}%</span>
           </div>
         ) : (
           <div style={styles.rcTimerPill}>SIN SIMULAR</div>
@@ -433,7 +433,7 @@ export default function App() {
     setModalConfig({
       isOpen: true,
       type: 'send',
-      title: '🚀 ENVIAR EXPEDICIÓN',
+      title: 'Confirmar expedición',
       message: `¿Confirmas que deseas enviar a ${form.hamster} a la expedición de ${mapaSelec}?`,
       onConfirm: ejecutarGuardar
     });
@@ -494,7 +494,7 @@ export default function App() {
     setModalConfig({
       isOpen: true,
       type: 'delete',
-      title: '⚠️ BORRAR REGISTRO',
+      title: 'Eliminar expedición',
       message: `¿Estás completamente seguro de que deseas cancelar y borrar la expedición activa de ${hamsterName}? Esta acción no se puede deshacer.`,
       onConfirm: () => ejecutarEliminar(id)
     });
@@ -552,64 +552,192 @@ export default function App() {
   // ESTILOS GLOBALES Y MEDIA QUERIES
   // ==========================================
   const cssGlobal = `
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #0b0d14; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb { background: #2a2d40; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #3b4260; }
-    
-    .btn-hover { transition: all 0.2s ease-in-out !important; }
-    .btn-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(14, 165, 233, 0.5), inset 0 2px 0 rgba(255,255,255,0.3) !important; filter: brightness(1.15); }
-    
-    .card-hover { transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important; }
-    .card-hover:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.6) !important; border-color: rgba(255,255,255,0.1) !important; }
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    ::-webkit-scrollbar { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track { background: #0c1017; }
+    ::-webkit-scrollbar-thumb { background: #2f3a4b; border-radius: 8px; }
+    ::selection { background: rgba(54,192,220,.24); }
+    button, input { font: inherit; }
+    button:focus-visible, input:focus-visible, .premium-input:focus-visible { outline: 2px solid #42bad3; outline-offset: 2px; }
+    button:disabled { opacity: .50; cursor: not-allowed !important; transform: none !important; }
+    .rc-eyebrow { color: #6d879c; font-size: 10px; font-weight: 800; letter-spacing: .16em; line-height: 1.5; }
+    .rc-bullet { color: #526474; margin: 0 5px; }
 
-    .premium-input:focus-within { border-color: #38bdf8 !important; box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2) !important; }
-    
-    .horizontal-scroll { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 15px; scroll-behavior: smooth; }
-    .mini-card { flex: 0 0 auto; width: 140px; background: #1b1c2b; padding: 15px 12px; border-radius: 8px; border: 1px solid #2a2d40; cursor: pointer; text-align: center; transition: all 0.2s; position: relative; }
-    .mini-card:hover { transform: translateY(-3px); border-color: #0ea5e9 !important; background: #1e2130; box-shadow: 0 8px 20px rgba(0,0,0,0.5); }
-    
-    .historial-item { display: grid; grid-template-columns: 2fr 1.5fr 1.5fr; background: #16192b; border: 1px solid #2a2d40; margin-bottom: 10px; padding: 15px 20px; border-radius: 8px; align-items: center; }
+    /* Product header */
+    .rc-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 22px 0 23px; border-bottom: 1px solid #1f2936; margin-bottom: 25px; }
+    .rc-brand { display: flex; align-items: center; gap: 19px; min-width: 0; }
+    .rc-brand-mark { background: #152a32; border: 1px solid #27505b; color: #f0fcff; border-radius: 11px; width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 850; letter-spacing: -.08em; flex: 0 0 auto; }
+    .rc-brand-mark span { color: #45c5d5; }
+    .rc-brand-copy h1 { color: #edf2f8; font-size: clamp(20px, 3vw, 28px); font-weight: 760; line-height: 1.15; letter-spacing: -.045em; margin: 4px 0 6px; }
+    .rc-heading-dot { color: #49bfd2; }
+    .rc-brand-copy p { font-size: 12px; color: #8192a5; margin: 0; }
+    .rc-header-actions { display: flex; gap: 12px; align-items: center; flex-shrink: 0; }
+    .rc-status { border: 1px solid #243640; background: #111c22; border-radius: 50px; padding: 9px 12px; color: #9db5bd; font-size: 11px; white-space: nowrap; }
+    .rc-status-dot { background: #53c6ae; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 8px; box-shadow: 0 0 0 3px rgba(83,198,174,.1); }
+    .rc-refresh { cursor: pointer; background: #18212b; border: 1px solid #2c3949; border-radius: 8px; padding: 10px 14px; color: #d1dfeb; font-size: 12px; font-weight: 650; transition: background .16s,border-color .16s; }
+    .rc-refresh:hover { background: #202d3a; border-color: #38596b; }
+    .rc-notice { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 16px; padding: 12px 14px; border: 1px solid #29544d; background: #122320; border-radius: 8px; color: #b9e4d2; line-height: 1.55; font-size: 12px; }
+    .rc-notice-error { border-color: #654039; background: #281c1d; color: #f1c9c3; }
+    .rc-notice-mark { margin-top: 5px; border-radius: 50%; width: 6px; height: 6px; background: #65bc9c; flex-shrink: 0; }
+    .rc-notice-error .rc-notice-mark { background: #e28e7c; }
 
-    /* Clases Responsivas para Layout Móvil */
-    .form-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; }
-    .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    /* KPI strip */
+    .rc-overview { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); margin-bottom: 23px; border: 1px solid #293341; border-radius: 12px; background: #121923; overflow: hidden; }
+    .rc-stat { min-width: 0; padding: 19px 20px 17px; position: relative; }
+    .rc-stat + .rc-stat { border-left: 1px solid #25303c; }
+    .rc-stat-label { display: block; font-size: 11px; font-weight: 650; color: #8393a7; margin-bottom: 8px; }
+    .rc-stat-number { display: block; color: #edf4f9; font-size: clamp(24px,2.8vw,32px); letter-spacing: -.05em; font-weight: 740; font-variant-numeric: tabular-nums; }
+    .rc-stat-meta { color: #64768b; font-size: 10px; line-height: 1.5; display: block; margin-top: 5px; }
+    .rc-stat-positive .rc-stat-number { color: #76c8aa; }
+    .rc-stat-negative .rc-stat-number { color: #e2a09a; }
+    .rc-stat-cyan .rc-stat-number { color: #79c2d5; }
+
+    /* Analysis: integrated not nested cards */
+    .rc-model-panel { background: #111821; border: 1px solid #283442; border-radius: 12px; margin: 0 0 34px; overflow: hidden; }
+    .rc-panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 23px 25px 20px; border-bottom: 1px solid #242e3b; }
+    .rc-panel-heading h2, .rc-section-heading h2, .rc-prediction-head h2 { color: #edf3f8; font-size: 18px; letter-spacing: -.025em; font-weight: 725; margin: 6px 0 0; }
+    .rc-panel-heading p { margin: 7px 0 0; color: #718498; font-size: 12px; }
+    .rc-panel-tag { display: inline-flex; align-items: center; gap: 7px; background: #173128; color: #91d7ad; border: 1px solid #2b5940; border-radius: 6px; padding: 6px 10px; font-size: 11px; flex-shrink: 0; }
+    .rc-panel-tag:before { content: ''; background: currentColor; border-radius: 50%; width: 6px; height: 6px; }
+    .rc-model-grid { display: grid; grid-template-columns: minmax(0,1.35fr) minmax(250px,1fr); }
+    .rc-model-comparison { padding: 27px 26px 24px; }
+    .rc-model-item + .rc-model-item { margin-top: 22px; }
+    .rc-model-item-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+    .rc-model-item-top span { color: #b2c0d1; font-size: 12px; }
+    .rc-model-item-top strong { color: #f1f5f9; font-size: 18px; font-weight: 740; font-variant-numeric: tabular-nums; }
+    .rc-track { overflow: hidden; height: 7px; background: #273442; border-radius: 100px; }
+    .rc-track-fill { height: 100%; border-radius: inherit; transition: width .5s ease; }
+    .rc-fill-ia { background: #51bed1; }
+    .rc-fill-base { background: #8d90aa; }
+    .rc-fill-win { background: #67bfa7; }
+    .rc-model-source { margin-top: 24px; color: #728499; font-size: 11px; line-height: 1.6; max-width: 500px; }
+    .rc-model-side { background: #151e2a; border-left: 1px solid #273343; padding: 25px 26px; }
+    .rc-side-title { color: #a5b5c8; font-size: 11px; font-weight: 650; margin-bottom: 17px; }
+    .rc-side-title span { display: block; font-size: 10px; color: #6c8194; font-weight: 450; margin-top: 3px; }
+    .rc-brier-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; color: #8fa2b4; font-size: 12px; border-bottom: 1px solid #293645; }
+    .rc-brier-row strong { color: #e2e9f3; font-size: 14px; font-weight: 670; font-variant-numeric: tabular-nums; }
+    .rc-training-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 20px; }
+    .rc-training-meta div { display: flex; flex-direction: column; gap: 4px; }
+    .rc-training-meta strong { color: #e4edf6; font-size: 19px; font-weight: 700; letter-spacing: -.02em; }
+    .rc-training-meta span { color: #718498; font-size: 10px; }
+    .rc-model-footer { border-top: 1px solid #242f3d; padding: 13px 25px 15px; display: flex; flex-wrap: wrap; gap: 7px 18px; color: #718599; font-size: 10.5px; }
+    .rc-model-footer span:not(:first-child):before { content: '·'; padding-right: 16px; color: #506477; }
+    .rc-model-empty { padding: 32px 25px; font-size: 12px; color: #8095a8; }
+
+    /* Section headings and roster */
+    .rc-section-heading { display: flex; justify-content: space-between; align-items: end; gap: 12px; margin: 0 0 17px; }
+    .rc-section-heading h2 { margin-top: 4px; }
+    .rc-section-aside { font-size: 11px; color: #778a9e; padding-bottom: 2px; text-align: right; }
+    .rc-roster { margin: 0 0 29px; }
+    .rc-roster-scroll { display: flex; overflow-x: auto; gap: 11px; padding-bottom: 12px; scrollbar-width: thin; }
+    .rc-hamster-card { width: 174px; min-width: 174px; text-align: left; background: #131b26; border: 1px solid #263241; border-radius: 10px; padding: 14px; cursor: pointer; transition: background .18s, border-color .18s, transform .18s; color: inherit; }
+    .rc-hamster-card:hover { background: #1a2531; border-color: #4a7680; transform: translateY(-2px); }
+    .rc-hamster-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
+    .rc-hamster-avatar { display: flex; justify-content: center; align-items: center; background: #202b39; border: 1px solid #2b3949; border-radius: 9px; height: 51px; width: 51px; }
+    .rc-hamster-avatar img { width: 47px; height: 47px; object-fit: contain; }
+    .rc-hamster-total { color: #697f94; font-size: 10px; white-space: nowrap; padding-top: 3px; }
+    .rc-hamster-name { color: #e5edf5; font-size: 12px; font-weight: 680; margin-top: 14px; min-height: 18px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .rc-hamster-win { display: flex; align-items: baseline; gap: 7px; margin-top: 9px; margin-bottom: 8px; }
+    .rc-hamster-win strong { font-size: 21px; font-weight: 750; letter-spacing: -.045em; color: #e2eaf4; }
+    .rc-hamster-win span { color: #778b9d; font-size: 10px; }
+    .rc-track-small { height: 4px; }
+    .rc-hamster-stats { display: flex; justify-content: space-between; gap: 4px; color: #7a8da1; font-size: 9px; margin-top: 10px; }
+    .rc-dot-green { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #61b699; vertical-align: 1px; }
+    .rc-hamster-streak { border-top: 1px solid #263140; padding-top: 10px; margin-top: 12px; color: #8599ad; font-size: 10px; }
+
+    /* Launch area */
+    .rc-launch-shell { margin-bottom: 26px; }
+    .rc-launch-heading { margin: 0 0 17px; }
+    .form-grid { display: grid; grid-template-columns: minmax(0,1.1fr) minmax(270px,.9fr); gap: 32px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 11px; }
     .card-container { display: flex; justify-content: center; align-items: center; }
-    .ia-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-    .ia-metric { background: #101827; border: 1px solid #27384f; border-radius: 10px; padding: 15px; }
-    .ia-metric strong { display: block; font-size: 25px; margin-top: 6px; }
-    .system-message { background: #16263b; color: #e0f2fe; padding: 11px 15px; border: 1px solid #245b89; border-radius: 8px; margin: 0 0 17px; font-size: 13px; line-height: 1.5; }
-    .test-card { background: #121827; border: 1px solid #334155; border-radius: 12px; margin-bottom: 24px; padding: 18px; color: #cbd5e1; }
-    .test-card strong { color: #fff; }
+    .premium-input:focus-within { border-color: #4597ac !important; box-shadow: 0 0 0 3px rgba(68,174,196,.09) !important; }
+    .btn-hover { transition: filter .2s, transform .2s !important; }
+    .btn-hover:not(:disabled):hover { filter: brightness(1.10); transform: translateY(-1px); }
+    .card-hover { transition: transform .2s, border-color .2s !important; }
+    .card-hover:hover { transform: translateY(-2px); border-color: #3b5260 !important; }
+    .rc-predict-btn { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: #37a6bc; color: #06151b; border: 1px solid #62bdce; border-radius: 8px; padding: 14px 18px; font-size: 13px; font-weight: 780; cursor: pointer; margin-top: 9px; transition: background .2s, transform .2s; }
+    .rc-predict-btn:hover:not(:disabled) { background: #61c5d6; transform: translateY(-1px); }
+    .rc-predict-btn span { font-size: 19px; line-height: 0; }
 
-    @media (max-width: 768px) {
-      .form-grid { grid-template-columns: 1fr; gap: 30px; padding: 20px !important; }
-      .stats-grid { grid-template-columns: 1fr; }
-      .card-container { width: 100%; }
-      .card-container > div { width: 100% !important; max-width: 320px; }
-      .ia-details { grid-template-columns: 1fr; }
-      .historial-item { grid-template-columns: 1fr; gap: 15px; text-align: center; }
-      .historial-item > div { justify-content: center; text-align: center; }
+    /* Simulation, less tiles and more hierarchy */
+    .rc-prediction { border: 1px solid #2d4550; background: #121d25; border-radius: 12px; margin: 23px 0 32px; overflow: hidden; }
+    .rc-prediction-head { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 20px 24px; border-bottom: 1px solid #2b3a44; }
+    .rc-prediction-outcome { font-size: 11px; color: #84cfb4; background: #16352d; border: 1px solid #2a604e; padding: 8px 11px; border-radius: 6px; }
+    .rc-prediction-outcome.is-negative { color: #e5a29b; background: #371f23; border-color: #6b383e; }
+    .rc-prediction-grid { display: grid; grid-template-columns: minmax(200px,.8fr) minmax(0,1.4fr); }
+    .rc-primary-prob { padding: 25px 27px; border-right: 1px solid #2b3a44; }
+    .rc-primary-label { color: #90a9b7; font-size: 12px; }
+    .rc-primary-value { color: #edf5f8; font-size: clamp(42px,5vw,58px); letter-spacing: -.065em; font-weight: 760; line-height: 1.25; margin: 6px 0; font-variant-numeric: tabular-nums; }
+    .rc-primary-value span { color: #78adbc; font-size: .48em; padding-left: 3px; }
+    .rc-primary-caption { color: #6f8795; font-size: 10px; }
+    .rc-prediction-bars { padding: 25px 27px; }
+    .rc-prediction-row + .rc-prediction-row { margin-top: 18px; }
+    .rc-prediction-row > div:first-child { display: flex; justify-content: space-between; gap: 16px; color: #a5b8c4; font-size: 11px; margin-bottom: 9px; }
+    .rc-prediction-row strong { color: #eaf2f6; font-size: 13px; }
+    .rc-prediction-diff { border-top: 1px solid #2d3d48; display: flex; justify-content: space-between; gap: 15px; color: #8da6b4; font-size: 11px; margin-top: 19px; padding-top: 13px; }
+    .rc-prediction-diff strong { color: #d5e6ed; }
+    .rc-prediction-footer { background: #101820; border-top: 1px solid #2b3a44; padding: 14px 24px; color: #728a99; font-size: 10.5px; display: flex; flex-wrap: wrap; gap: 7px 18px; }
+    .rc-prediction-footer span:not(:first-child):before { content: '·'; padding-right: 16px; color: #4c6977; }
+    .rc-count { background: #253140; color: #a6bdce; font-size: 12px; padding: 3px 8px; border-radius: 6px; vertical-align: 2px; margin-left: 3px; }
+
+    /* Active and history */
+    .rc-active-entry { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 300px; }
+    .rc-result-button { flex: 1; padding: 12px 9px; border-radius: 7px; color: #dbf1eb; cursor: pointer; font-size: 12px; font-weight: 720; border: 1px solid #346a56; background: #1d4839; }
+    .rc-result-lose { color: #f5d7d4; background: #4a282b; border-color: #7a444a; }
+    .rc-result-button:hover { filter: brightness(1.1); }
+    .historial-item { display: grid; grid-template-columns: 1.25fr 1fr .95fr; align-items: center; gap: 15px; background: #111922; border: 1px solid #25303d; border-radius: 8px; margin-bottom: 8px; padding: 15px 19px; }
+    .rc-history-win { border-left: 2px solid #4f967b; }
+    .rc-history-lose { border-left: 2px solid #9b6261; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(1,5,11,.84); backdrop-filter: blur(6px); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: #161f2a; border: 1px solid #364452; border-radius: 12px; padding: 26px; max-width: 420px; width: 90%; box-shadow: 0 26px 75px rgba(0,0,0,.55); text-align: left; }
+    .modal-title { color: #f0f5f8; font-size: 17px; font-weight: 760; margin: 0 0 12px; }
+    .modal-message { color: #a3b4c6; font-size: 13px; margin: 0 0 24px; line-height: 1.65; }
+    .modal-actions { display: flex; gap: 11px; }
+    .modal-btn { flex: 1; border-radius: 7px; padding: 12px; cursor: pointer; font-size: 12px; font-weight: 700; border: 1px solid transparent; }
+    .btn-cancel { background: #253140; color: #e7edf4; border-color: #344453; }
+    .btn-confirm-delete { background: #7c3f46; color: #fdf0f0; border-color: #9d4b54; }
+    .btn-confirm-send { background: #2797af; color: #06161e; border-color: #48b6c5; }
+
+    @media (max-width: 1020px) {
+      .rc-overview { grid-template-columns: repeat(3,minmax(0,1fr)); }
+      .rc-stat:nth-child(4) { border-left: 0; border-top: 1px solid #25303c; }
+      .rc-stat:nth-child(5) { border-top: 1px solid #25303c; }
     }
-
-    /* Estilos del Modal Premium */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 1000; animation: fadeIn 0.2s ease-out; }
-    .modal-content { background: #1b1c2b; border: 1px solid #2a2d40; border-radius: 16px; padding: 25px; max-width: 380px; width: 90%; box-shadow: 0 25px 50px rgba(0,0,0,0.8); text-align: center; animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-    .modal-title { color: #fff; font-size: 18px; font-weight: 900; margin-top: 0; margin-bottom: 15px; letter-spacing: 1px; }
-    .modal-message { color: #cbd5e1; font-size: 14px; margin-bottom: 25px; line-height: 1.6; }
-    .modal-actions { display: flex; gap: 12px; justify-content: center; }
-    .modal-btn { flex: 1; padding: 14px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; border: none; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s; }
-    .btn-cancel { background: #2a2d40; color: #fff; border: 1px solid #3b4260; }
-    .btn-cancel:hover { background: #3b4260; }
-    .btn-confirm-delete { background: linear-gradient(135deg, #b91c1c, #dc2626); color: white; box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4); }
-    .btn-confirm-delete:hover { filter: brightness(1.1); transform: translateY(-2px); }
-    .btn-confirm-send { background: linear-gradient(135deg, #0284c7, #0ea5e9); color: white; box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4); }
-    .btn-confirm-send:hover { filter: brightness(1.1); transform: translateY(-2px); }
-
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 780px) {
+      .rc-header { align-items: flex-start; }
+      .rc-header-actions { flex-direction: column; align-items: flex-end; }
+      .form-grid { grid-template-columns: 1fr; gap: 24px; padding: 21px !important; }
+      .rc-model-grid { grid-template-columns: 1fr; }
+      .rc-model-side { border-left: 0; border-top: 1px solid #273343; }
+      .rc-prediction-grid { grid-template-columns: 1fr; }
+      .rc-primary-prob { border-right: 0; border-bottom: 1px solid #2b3a44; }
+      .rc-active-entry { max-width: 100%; }
+      .historial-item { grid-template-columns: 1fr; gap: 12px; }
+      .historial-item > div:last-child { text-align: left !important; }
+    }
+    @media (max-width: 560px) {
+      .rc-header { flex-direction: column; }
+      .rc-header-actions { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
+      .rc-overview { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .rc-stat { padding: 17px 14px; border-top: 1px solid #25303c; }
+      .rc-stat:nth-child(odd) { border-left: 0; }
+      .rc-stat:nth-child(1),.rc-stat:nth-child(2) { border-top: 0; }
+      .rc-stat:nth-child(4) { border-left: 1px solid #25303c; }
+      .rc-panel-heading,.rc-prediction-head { align-items: flex-start; flex-direction: column; }
+      .rc-model-comparison,.rc-model-side { padding: 22px 18px; }
+      .rc-panel-heading { padding: 22px 18px; }
+      .rc-section-heading { align-items: flex-start; flex-direction: column; gap: 6px; }
+      .rc-section-aside { text-align: left; }
+      .rc-prediction-head,.rc-primary-prob,.rc-prediction-bars { padding: 20px 18px; }
+      .rc-prediction-footer,.rc-model-footer { padding: 14px 18px; }
+      .stats-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *:before, *:after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
   `;
-
   return (
     <div style={styles.page}>
       <style>{cssGlobal}</style>
@@ -637,124 +765,139 @@ export default function App() {
       )}
 
       <div style={styles.container}>
-        <div style={styles.navBar}>
-          <div style={{ textAlign: 'center' }}>
-            <h1 style={{ margin: 0, fontSize: '20px', color: '#fff', letterSpacing: '1px' }}>🐹 AI EXPEDITIONS CONTROL PANEL</h1>
-            <div style={{ color: '#64748b', fontSize: '12px', marginTop: 6 }}>RollerCoin AI v2.0 · Predicciones estadísticas, no garantías</div>
-            <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: 9 }}>
-              Simula expediciones sin iniciar sesión · El acceso a los registros depende de los permisos de Supabase.
+        <header className="rc-header">
+          <div className="rc-brand">
+            <div className="rc-brand-mark" aria-hidden="true">R<span>C</span></div>
+            <div className="rc-brand-copy">
+              <div className="rc-eyebrow">ROLLERCOIN · EXPEDITIONS</div>
+              <h1>Expedition Control<span className="rc-heading-dot">.</span></h1>
+              <p>Simulaciones, rendimiento e historial en un solo lugar.</p>
             </div>
           </div>
-        </div>
+          <div className="rc-header-actions">
+            <div className="rc-status"><span className="rc-status-dot" />{estadoModelo === 'entrenado' ? 'Modelo disponible' : estadoModelo ? `Modelo: ${estadoModelo}` : 'Comprobando modelo'}</div>
+            <button type="button" className="rc-refresh" onClick={cargarDashboard} title="Actualizar estadísticas">↻ <span>Actualizar</span></button>
+          </div>
+        </header>
 
-        {mensajeOperacion && <div className="system-message" role="status">{mensajeOperacion}</div>}
-        {errorDashboard && <div className="system-message" role="alert">{errorDashboard}</div>}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
-          <button type="button" onClick={cargarDashboard} style={{ background: '#1e293b', color: '#dbeafe', border: '1px solid #334155', borderRadius: 8, padding: '9px 14px', cursor: 'pointer' }}>↻ Actualizar tablero</button>
-        </div>
+        {mensajeOperacion && <div className="rc-notice" role="status"><span className="rc-notice-mark" />{mensajeOperacion}</div>}
+        {errorDashboard && <div className="rc-notice rc-notice-error" role="alert"><span className="rc-notice-mark" />{errorDashboard}</div>}
 
-        {/* ========================================== */}
-        {/* PANEL DE ESTADÍSTICAS GLOBALES             */}
-        {/* ========================================== */}
+        {/* PANORAMA: métricas históricas */}
         {metricas && (
-          <div style={styles.metricsGrid}>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>PARTIDAS TOTALES</span>
-              <span style={styles.metricVal}>{metricas.total_partidas}</span>
+          <section className="rc-overview" aria-label="Resumen de expediciones">
+            <div className="rc-stat">
+              <span className="rc-stat-label">Expediciones</span>
+              <strong className="rc-stat-number">{metricas.total_partidas}</strong>
+              <span className="rc-stat-meta">Registros finalizados</span>
             </div>
-            <div style={{...styles.metricCard, borderLeft: '4px solid #22c55e'}}>
-              <span style={styles.metricLabel}>✅ VIVIERON (REAL)</span>
-              <span style={{...styles.metricVal, color: '#4ade80'}}>{metricas.vivieron_num} <small style={{fontSize:'12px'}}>({metricas.vivieron_porc}%)</small></span>
+            <div className="rc-stat rc-stat-positive">
+              <span className="rc-stat-label">Supervivencias</span>
+              <strong className="rc-stat-number">{metricas.vivieron_num}</strong>
+              <span className="rc-stat-meta">{metricas.vivieron_porc}% del total</span>
             </div>
-            <div style={{...styles.metricCard, borderLeft: '4px solid #ef4444'}}>
-              <span style={styles.metricLabel}>💀 MURIERON (REAL)</span>
-              <span style={{...styles.metricVal, color: '#f87171'}}>{metricas.murieron_num} <small style={{fontSize:'12px'}}>({metricas.murieron_porc}%)</small></span>
+            <div className="rc-stat rc-stat-negative">
+              <span className="rc-stat-label">Derrotas</span>
+              <strong className="rc-stat-number">{metricas.murieron_num}</strong>
+              <span className="rc-stat-meta">{metricas.murieron_porc}% del total</span>
             </div>
-            <div style={{...styles.metricCard, borderLeft: '4px solid #0ea5e9'}}>
-              <span style={styles.metricLabel}>🤖 ACIERTOS REGISTRADOS IA</span>
-              <span style={{...styles.metricVal, color: '#38bdf8'}}>{metricas.ia_aciertos} <small style={{fontSize:'12px'}}>({metricas.ia_exactitud_porc ?? metricas.ia_precision_porc}%)</small></span>
+            <div className="rc-stat rc-stat-cyan">
+              <span className="rc-stat-label">Aciertos de IA</span>
+              <strong className="rc-stat-number">{metricas.ia_aciertos}</strong>
+              <span className="rc-stat-meta">{metricas.ia_exactitud_porc ?? metricas.ia_precision_porc}% en registros evaluados</span>
             </div>
-            <div style={{...styles.metricCard, borderLeft: '4px solid #f97316'}}>
-              <span style={styles.metricLabel}>❌ FALLOS IA</span>
-              <span style={{...styles.metricVal, color: '#fb923c'}}>{metricas.ia_fallos}</span>
+            <div className="rc-stat">
+              <span className="rc-stat-label">Fallos de IA</span>
+              <strong className="rc-stat-number">{metricas.ia_fallos}</strong>
+              <span className="rc-stat-meta">{metricas.ia_predicciones_evaluadas ?? (metricas.ia_aciertos + metricas.ia_fallos)} predicciones guardadas</span>
             </div>
-          </div>
+          </section>
         )}
 
-        {/* PRUEBA TEMPORAL: DIFERENTE DE LAS PREDICCIONES HISTÓRICAS REGISTRADAS */}
-        <section className="test-card" aria-label="Evaluación de la inteligencia artificial">
-          <div style={{ fontWeight: 900, fontSize: 15, marginBottom: 12, color: '#e0f2fe' }}>🧪 EVALUACIÓN REAL DE LA IA v2</div>
-          <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 12 }}>
-            Estado del modelo: <strong>{estadoModelo || 'Cargando...'}</strong> · Registros entrenables: <strong>{expedicionesEntrenables}</strong>
+        {/* Evaluación cronológica, distinta de los registros guardados */}
+        <section className="rc-model-panel" aria-label="Rendimiento del modelo">
+          <div className="rc-panel-heading">
+            <div>
+              <div className="rc-eyebrow">MODEL INSIGHTS <span className="rc-bullet">/</span> RANDOM FOREST</div>
+              <h2>Rendimiento del modelo</h2>
+              <p>Validación con expediciones posteriores a las utilizadas para entrenar.</p>
+            </div>
+            <span className="rc-panel-tag">{estadoModelo === 'entrenado' ? 'Entrenado' : estadoModelo || 'Sin verificar'}</span>
           </div>
           {evaluacionModelo ? (
             <>
-              <div className="ia-details">
-                <div className="ia-metric"><span>Exactitud IA (prueba)</span><strong style={{ color: '#4ade80' }}>{evaluacionModelo.exactitud_ia_porc}%</strong></div>
-                <div className="ia-metric"><span>Exactitud estimación juego (prueba)</span><strong style={{ color: '#7dd3fc' }}>{evaluacionModelo.exactitud_oficial_porc}%</strong></div>
-                <div className="ia-metric"><span>Brier Score IA ↓</span><strong>{evaluacionModelo.brier_ia}</strong></div>
-                <div className="ia-metric"><span>Brier estimación juego ↓</span><strong>{evaluacionModelo.brier_oficial}</strong></div>
+              <div className="rc-model-grid">
+                <div className="rc-model-comparison">
+                  <div className="rc-model-item">
+                    <div className="rc-model-item-top"><span>Exactitud de la IA</span><strong>{evaluacionModelo.exactitud_ia_porc}%</strong></div>
+                    <div className="rc-track"><div className="rc-track-fill rc-fill-ia" style={{width: `${Math.max(0, Math.min(100, Number(evaluacionModelo.exactitud_ia_porc) || 0))}%`}} /></div>
+                  </div>
+                  <div className="rc-model-item">
+                    <div className="rc-model-item-top"><span>Exactitud de la estimación base</span><strong>{evaluacionModelo.exactitud_oficial_porc}%</strong></div>
+                    <div className="rc-track"><div className="rc-track-fill rc-fill-base" style={{width: `${Math.max(0, Math.min(100, Number(evaluacionModelo.exactitud_oficial_porc) || 0))}%`}} /></div>
+                  </div>
+                  <div className="rc-model-source">El porcentaje base proviene de tu fórmula/registro, no de una consulta al servidor de RollerCoin.</div>
+                </div>
+                <div className="rc-model-side">
+                  <div className="rc-side-title">Calidad de las probabilidades <span>↓ menor es mejor</span></div>
+                  <div className="rc-brier-row"><span>Brier · IA</span><strong>{evaluacionModelo.brier_ia}</strong></div>
+                  <div className="rc-brier-row"><span>Brier · Referencia</span><strong>{evaluacionModelo.brier_oficial}</strong></div>
+                  <div className="rc-training-meta">
+                    <div><strong>{evaluacionModelo.expediciones_entrenamiento}</strong><span>Entrenamiento</span></div>
+                    <div><strong>{evaluacionModelo.expediciones_prueba}</strong><span>Prueba temporal</span></div>
+                  </div>
+                </div>
               </div>
-              <p style={{ marginBottom: 0, fontSize: 12, lineHeight: 1.6 }}>
-                Entrenamiento: {evaluacionModelo.expediciones_entrenamiento} · Prueba cronológica: {evaluacionModelo.expediciones_prueba}. Menor Brier es mejor.
-                El porcentaje de referencia proviene de la fórmula/valor que guardaste en la web; no se verifica con el servidor del juego.
-                Esta comparación no demuestra superioridad estadística.
-              </p>
+              <div className="rc-model-footer">
+                <span>{expedicionesEntrenables} expediciones entrenables</span>
+                <span>Una diferencia pequeña de exactitud no demuestra superioridad estadística.</span>
+                {metricas && <span>{metricas.ia_predicciones_evaluadas ?? 0} predicciones registradas evaluadas por separado.</span>}
+              </div>
             </>
           ) : (
-            <p style={{ fontSize: 12, margin: 0 }}>Aún no hay una evaluación temporal disponible con los datos actuales.</p>
+            <div className="rc-model-empty">{estadoModelo ? 'La evaluación temporal todavía no está disponible.' : 'Consultando los resultados del modelo…'}</div>
           )}
-          {metricas && <p style={{ marginBottom: 0, fontSize: 12, color: '#94a3b8' }}>
-            Histórico de predicciones guardadas: {metricas.ia_predicciones_evaluadas ?? 0} evaluadas · {metricas.ia_aciertos} aciertos · {metricas.ia_fallos} fallos. Esta cifra es distinta de la prueba cronológica.
-          </p>}
         </section>
 
-        {/* ========================================== */}
-        {/* PANEL DE RENDIMIENTO INDIVIDUAL (CARRUSEL) */}
-        {/* ========================================== */}
+        {/* RENDIMIENTO INDIVIDUAL */}
         {resumenHamsters.length > 0 && (
-          <div style={{ marginBottom: '30px' }}>
-            <h3 style={{...styles.label, marginBottom: '15px', color: '#fff', fontSize: '13px'}}>📊 RENDIMIENTO POR HÁMSTER</h3>
-            <div className="horizontal-scroll">
+          <section className="rc-roster">
+            <div className="rc-section-heading">
+              <div><div className="rc-eyebrow">HISTORIAL POR PERSONAJE</div><h2>Rendimiento de hámsteres</h2></div>
+              <span className="rc-section-aside">Selecciona uno para preparar una expedición</span>
+            </div>
+            <div className="rc-roster-scroll">
               {resumenHamsters.map(h => {
                 const hInfo = HAMSTERS_DEFAULT.find(x => x.nombre === h.hamster) || HAMSTERS_DEFAULT[0];
+                const winrate = Math.max(0, Math.min(100, Number(h.winrate) || 0));
                 return (
-                  <div key={h.hamster} className="mini-card" onClick={() => recalcularTodo(h.hamster, form.nivel || 1, form.expedicion, undefined, true)}
-                       style={{ borderColor: h.winrate >= 50 ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)' }}>
-                    <img src={hInfo.img} alt={h.hamster} style={{ height: '45px', objectFit: 'contain', marginBottom: '8px' }} />
-                    <div style={{ color: 'white', fontSize: '12px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {h.hamster}
-                    </div>
-                    <div style={{ color: '#94a3b8', fontSize: '10px', margin: '4px 0' }}>Envíos: {h.total}</div>
-                    
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 'bold', padding: '0 10px' }}>
-                      <span style={{color: '#4ade80'}} title="Vivieron">✅ {h.victorias}</span>
-                      <span style={{color: '#f87171'}} title="Murieron">💀 {h.derrotas}</span>
-                    </div>
-
-                    <div style={{ marginTop: '6px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', color: h.winrate >= 50 ? '#4ade80' : '#f87171' }}>
-                      Winrate: {h.winrate}%
-                    </div>
-
-                    <div style={{ marginTop: '6px', fontSize: '10px', fontWeight: 'bold', color: h.racha_tipo === 'VIVIÓ' ? '#4ade80' : '#f87171' }}>
-                      {h.racha_tipo === 'VIVIÓ' ? '🔥' : '💔'} Racha: {h.racha_conteo} {h.racha_tipo}
-                    </div>
-                  </div>
-                )
+                  <button type="button" key={h.hamster} className="rc-hamster-card" onClick={() => recalcularTodo(h.hamster, form.nivel || 1, form.expedicion, undefined, true)} title={`Preparar expedición con ${h.hamster}`}>
+                    <div className="rc-hamster-top"><span className="rc-hamster-avatar"><img src={hInfo.img} alt="" loading="lazy" /></span><span className="rc-hamster-total">{h.total} envíos</span></div>
+                    <div className="rc-hamster-name" title={h.hamster}>{h.hamster}</div>
+                    <div className="rc-hamster-win"><strong>{h.winrate}%</strong><span>victorias</span></div>
+                    <div className="rc-track rc-track-small"><div className="rc-track-fill rc-fill-win" style={{width:`${winrate}%`}} /></div>
+                    <div className="rc-hamster-stats"><span><i className="rc-dot-green" /> {h.victorias} vivieron</span><span>{h.derrotas} murieron</span></div>
+                    <div className="rc-hamster-streak">Racha: {h.racha_conteo} {h.racha_tipo === 'VIVIÓ' ? 'victorias' : 'derrotas'}</div>
+                  </button>
+                );
               })}
             </div>
-          </div>
+          </section>
         )}
 
         {/* 1. SECCIÓN: FORMULARIO Y PREDICCIÓN */}
-        <div className="form-grid" style={styles.contenedorFormulario}>
+        <div className="rc-launch-shell">
+          <div className="rc-section-heading rc-launch-heading">
+            <div><div className="rc-eyebrow">CONFIGURACIÓN</div><h2>Nueva expedición</h2></div>
+            <span className="rc-section-aside">Selecciona un hámster y calcula su probabilidad</span>
+          </div>
+          <div className="form-grid" style={styles.contenedorFormulario}>
           <div style={styles.controlPanel}>
-            <h3 style={{ marginTop: 0, color: '#fff', letterSpacing: '1px' }}>DATOS DE LANZAMIENTO</h3>
             
-            <label style={styles.label}>BUSCAR Y SELECCIONAR HÁMSTER</label>
+            <label style={styles.label}>HÁMSTER</label>
             <BuscadorHamster valorActual={form.hamster} onSelect={(nombre) => recalcularTodo(nombre, form.nivel || 1, form.expedicion, undefined, true)} />
 
-            <label style={styles.label}>SELECCIONAR MAPA</label>
+            <label style={styles.label}>MAPA DE EXPEDICIÓN</label>
             <SelectorMapa valorActual={form.expedicion} onSelect={(mapa) => recalcularTodo(form.hamster, form.nivel || 1, mapa, form.bono, false)} />
 
             <div className="stats-grid">
@@ -768,14 +911,14 @@ export default function App() {
               </div>
               <div>
                 <label style={styles.label}>STATS</label>
-                <input type="number" value={form.stats} readOnly style={{ ...styles.input, backgroundColor: '#06070a', color: '#0bd4c1', borderColor: 'rgba(11, 212, 193, 0.3)', cursor: 'not-allowed', boxShadow: 'none' }} />
+                <input type="number" value={form.stats} readOnly style={{ ...styles.input, backgroundColor: '#0e1923', color: '#b7dae3', borderColor: '#2b3c49', cursor: 'not-allowed', boxShadow: 'none' }} />
               </div>
             </div>
 
-            <label style={styles.label}>% ESTIMADO DEL JUEGO (FÓRMULA LOCAL)</label>
-            <input type="text" value={`${form.porcentaje}%`} readOnly style={{ ...styles.input, backgroundColor: '#06070a', color: '#4ade80', borderColor: 'rgba(74, 222, 128, 0.3)', fontWeight: 'bold', cursor: 'not-allowed', boxShadow: 'none' }} />
+            <label style={styles.label}>PROBABILIDAD BASE ESTIMADA</label>
+            <input type="text" value={`${form.porcentaje}%`} readOnly style={{ ...styles.input, backgroundColor: '#0e1923', color: '#9ecfbd', borderColor: '#2b3c49', fontWeight: 'bold', cursor: 'not-allowed', boxShadow: 'none' }} />
 
-            <button className="btn-hover" onClick={simular} disabled={simulando} style={{...styles.btnSimular, opacity: simulando ? 0.6 : 1}}>{simulando ? '⏳ SIMULANDO...' : '🔍 PREDECIR SUPERVIVENCIA (FAST API)'}</button>
+            <button className="rc-predict-btn" onClick={simular} disabled={simulando}>{simulando ? 'Calculando predicción…' : 'Calcular probabilidad'} <span aria-hidden="true">→</span></button>
           </div>
 
           <div className="card-container">
@@ -788,30 +931,50 @@ export default function App() {
               viveIA={simulacion ? simulacion.vive_ia : null}
               onAction={confirmarGuardar}
               disabled={guardando || procesandoId !== null}
-              actionLabel={guardando ? 'GUARDANDO...' : 'ENVIAR DE EXPEDICIÓN'}
+              actionLabel={guardando ? 'GUARDANDO...' : 'Registrar expedición'}
               isPreview={true}
               bonoManual={form.bono} 
             />
           </div>
         </div>
+        </div>
 
-        {/* Comparación de probabilidades de la simulación actual */}
+        {/* Resultado de la simulación */}
         {simulacion && (
-          <section className="test-card" style={{ marginTop: 23 }} aria-label="Detalles de la predicción">
-            <h3 style={{ color: '#fff', fontSize: 15, marginTop: 0 }}>🤖 COMPARACIÓN DE SUPERVIVENCIA</h3>
-            <div className="ia-details">
-              <div className="ia-metric"><span>Probabilidad IA</span><strong style={{ color: simulacion.vive_ia === 'SI' ? '#4ade80' : '#fb7185' }}>{simulacion.probabilidad_ia}%</strong><small>IA: {simulacion.vive_ia === 'SI' ? 'Sobrevive' : 'No sobrevive'}</small></div>
-              <div className="ia-metric"><span>Estimación del juego (ingresada)</span><strong style={{ color: '#7dd3fc' }}>{simulacion.probabilidad_oficial}%</strong><small>Referencia: {simulacion.vive_oficial === 'SI' ? 'Sobrevive' : 'No sobrevive'}</small></div>
-              <div className="ia-metric"><span>Diferencia IA − referencia</span><strong style={{ color: simulacion.diferencia_puntos >= 0 ? '#4ade80' : '#fb7185' }}>{simulacion.diferencia_puntos > 0 ? '+' : ''}{simulacion.diferencia_puntos} puntos</strong></div>
-              <div className="ia-metric"><span>Historial del hámster</span><strong>{simulacion.hamster_con_historial ? 'Disponible' : 'Sin historial'}</strong><small>Racha previa de derrotas: {simulacion.racha_actual ?? 0}</small></div>
+          <section className="rc-prediction" aria-label="Resultado de la predicción">
+            <div className="rc-prediction-head">
+              <div><div className="rc-eyebrow">RESULTADO DE SIMULACIÓN</div><h2>Pronóstico de supervivencia</h2></div>
+              <span className={`rc-prediction-outcome ${simulacion.vive_ia === 'SI' ? 'is-positive' : 'is-negative'}`}>{simulacion.vive_ia === 'SI' ? 'Supervivencia prevista' : 'Riesgo de derrota'}</span>
             </div>
-            <p style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5, marginBottom: 0 }}>Esta estimación no garantiza el resultado. La «referencia del juego» es el porcentaje calculado o suministrado por tu frontend; no ha sido consultado directamente a RollerCoin.</p>
+            <div className="rc-prediction-grid">
+              <div className="rc-primary-prob">
+                <div className="rc-primary-label">Estimación del modelo</div>
+                <div className="rc-primary-value">{simulacion.probabilidad_ia}<span>%</span></div>
+                <div className="rc-primary-caption">Random Forest · datos históricos</div>
+              </div>
+              <div className="rc-prediction-bars">
+                <div className="rc-prediction-row">
+                  <div><span>IA</span><strong>{simulacion.probabilidad_ia}%</strong></div>
+                  <div className="rc-track"><div className="rc-track-fill rc-fill-ia" style={{width:`${Math.max(0, Math.min(100, Number(simulacion.probabilidad_ia) || 0))}%`}} /></div>
+                </div>
+                <div className="rc-prediction-row">
+                  <div><span>Estimación calculada del juego</span><strong>{simulacion.probabilidad_oficial}%</strong></div>
+                  <div className="rc-track"><div className="rc-track-fill rc-fill-base" style={{width:`${Math.max(0, Math.min(100, Number(simulacion.probabilidad_oficial) || 0))}%`}} /></div>
+                </div>
+                <div className="rc-prediction-diff"><span>Diferencia IA − referencia</span><strong>{Number(simulacion.diferencia_puntos) > 0 ? '+' : ''}{simulacion.diferencia_puntos} puntos</strong></div>
+              </div>
+            </div>
+            <div className="rc-prediction-footer">
+              <span>{simulacion.hamster_con_historial ? 'Historial del hámster disponible' : 'Hámster sin historial previo'}</span>
+              <span>Racha anterior de derrotas: {simulacion.racha_actual ?? 0}</span>
+              <span>Son estimaciones estadísticas, no resultados garantizados.</span>
+            </div>
           </section>
         )}
 
         {/* 2. SECCIÓN: EXPEDICIONES ACTIVAS */}
         <div style={{ marginTop: '30px' }}>
-          <h3 style={{...styles.label, marginBottom: '15px', color: '#fff', fontSize: '13px'}}>⏳ EXPEDICIONES ACTIVAS ({activas.length})</h3>
+          <div className="rc-section-heading"><div><div className="rc-eyebrow">SEGUIMIENTO</div><h2>Expediciones activas <span className="rc-count">{activas.length}</span></h2></div></div>
           {activas.length === 0 ? (
             <p style={{color: '#94a3b8', textAlign: 'center', marginTop: '20px'}}>No hay expediciones activas en este momento.</p>
           ) : (
@@ -827,13 +990,13 @@ export default function App() {
                     viveIA={activa.vive_ia}
                     onAction={() => confirmarEliminar(activa.id, activa.hamster)}
                     disabled={guardando || procesandoId !== null}
-                    actionLabel={procesandoId === activa.id ? 'PROCESANDO...' : 'CANCELAR / BORRAR'}
+                    actionLabel={procesandoId === activa.id ? 'Procesando...' : 'Cancelar expedición'}
                     isPreview={false}
                     bonoManual={(HAMSTERS_DEFAULT.find(h => h.nombre === activa.hamster) || HAMSTERS_DEFAULT[0]).bono} 
                   />
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="btn-hover" disabled={procesandoId !== null || guardando} onClick={() => finalizar(activa.id, true)} style={{ ...styles.btnWin, opacity: procesandoId !== null ? .6 : 1 }}>✅ VIVIÓ</button>
-                    <button className="btn-hover" disabled={procesandoId !== null || guardando} onClick={() => finalizar(activa.id, false)} style={{ ...styles.btnLose, opacity: procesandoId !== null ? .6 : 1 }}>💀 MURIÓ</button>
+                    <button className="rc-result-button rc-result-win" disabled={procesandoId !== null || guardando} onClick={() => finalizar(activa.id, true)}>Vivió</button>
+                    <button className="rc-result-button rc-result-lose" disabled={procesandoId !== null || guardando} onClick={() => finalizar(activa.id, false)}>Murió</button>
                   </div>
                 </div>
               ))}
@@ -843,13 +1006,13 @@ export default function App() {
 
         {/* 3. SECCIÓN: HISTORIAL DE RESULTADOS */}
         <div style={{ marginTop: '30px' }}>
-          <h3 style={{...styles.label, marginBottom: '15px', color: '#fff', fontSize: '13px'}}>📜 HISTORIAL DE RESULTADOS (ÚLTIMOS 50)</h3>
+          <div className="rc-section-heading"><div><div className="rc-eyebrow">REGISTROS</div><h2>Historial de resultados</h2></div><span className="rc-section-aside">Últimas 50 expediciones</span></div>
           {historial.length === 0 ? (
             <p style={{color: '#94a3b8', textAlign: 'center', marginTop: '20px'}}>No hay registros en el historial.</p>
           ) : (
             <div>
               {historial.map(item => (
-                <div key={item.id} className="historial-item" style={{ borderLeft: item.finalizado ? '5px solid #22c55e' : '5px solid #ef4444' }}>
+                <div key={item.id} className={`historial-item ${item.finalizado ? 'rc-history-win' : 'rc-history-lose'}`}>
                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                       <img src={(HAMSTERS_DEFAULT.find(h => h.nombre === item.hamster) || HAMSTERS_DEFAULT[0]).img} style={{ height: '40px', objectFit: 'contain' }} alt=""/>
                       <div>
@@ -864,13 +1027,13 @@ export default function App() {
                    <div style={{ textAlign: 'right' }}>
                       {item.probabilidad_ia !== null && item.probabilidad_ia !== undefined ? (
                         <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>
-                          IA Dijo: <strong style={{color: item.vive_ia === 'SI' ? '#4ade80' : '#f87171'}}>{item.vive_ia === 'SI' ? 'VIVIRÁ' : 'MORIRÁ'} ({item.probabilidad_ia}%)</strong>
+                          Predicción: <strong style={{color: item.vive_ia === 'SI' ? '#4ade80' : '#f87171'}}>{item.vive_ia === 'SI' ? 'VIVIRÁ' : 'MORIRÁ'} ({item.probabilidad_ia}%)</strong>
                         </div>
                       ) : (
                         <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>IA NO CONSULTADA</div>
                       )}
                       <div style={{ fontWeight: 'bold', fontSize: '16px', color: item.finalizado ? '#4ade80' : '#f87171' }}>
-                         {item.finalizado ? '✅ REAL: VIVIÓ' : '💀 REAL: MURIÓ'}
+                         {item.finalizado ? 'Vivió' : 'Murió'}
                       </div>
                    </div>
                 </div>
@@ -887,40 +1050,33 @@ export default function App() {
 // ESTILOS INLINE PREMIUM
 // ==========================================
 const styles = {
-  page: { backgroundColor: '#0d0f17', minHeight: '100vh', fontFamily: '"Inter", -apple-system, sans-serif', padding: '20px' },
-  container: { maxWidth: '1000px', margin: '0 auto' },
-  navBar: { display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(180deg, #1c2033, #151826)', padding: '15px 25px', borderRadius: '12px', marginBottom: '25px', border: '1px solid #2a2d40', boxShadow: '0 8px 20px rgba(0,0,0,0.4)' },
-  metricsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '15px', marginBottom: '25px' },
-  metricCard: { background: 'linear-gradient(135deg, #16192b, #11131f)', border: '1px solid #2a2d40', borderRadius: '12px', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: '0 8px 20px rgba(0,0,0,0.4)' },
-  metricLabel: { color: '#94a3b8', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px' },
-  metricVal: { color: '#fff', fontSize: '20px', fontWeight: '900' },
-  contenedorFormulario: { background: 'linear-gradient(135deg, #16192b, #11131f)', padding: '30px', borderRadius: '16px', border: '1px solid #2a2d40', boxSizing: 'border-box', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' },
-  controlPanel: { display: 'flex', flexDirection: 'column', gap: '15px' },
-  label: { color: '#94a3b8', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1.5px', textTransform: 'uppercase' },
-  input: { width: '100%', background: '#0b0d14', border: '1px solid #2a2d40', padding: '14px', borderRadius: '8px', color: '#e2e8f0', fontSize: '14px', outline: 'none', boxSizing: 'border-box', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)', transition: 'border-color 0.2s, box-shadow 0.2s' },
-  dropdownList: { position: 'absolute', top: '100%', left: 0, right: 0, background: '#11131c', border: '1px solid #2a2d40', borderRadius: '8px', maxHeight: '220px', overflowY: 'auto', zIndex: 100, marginTop: '5px', boxShadow: '0 10px 25px rgba(0,0,0,0.6)' },
-  dropdownItem: { padding: '10px 14px', color: '#e2e8f0', cursor: 'pointer', borderBottom: '1px solid #1a1b26', fontSize: '13px', transition: 'background 0.2s' },
-  btnSimular: { background: 'linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%)', color: 'white', padding: '18px', border: '1px solid #38bdf8', borderRadius: '8px', fontWeight: '900', letterSpacing: '1px', cursor: 'pointer', marginTop: '10px', boxShadow: '0 6px 15px rgba(14, 165, 233, 0.3), inset 0 2px 0 rgba(255,255,255,0.2)', textTransform: 'uppercase', textShadow: '0 2px 4px rgba(0,0,0,0.3)' },
-  gridActivas: { display: 'flex', flexWrap: 'wrap', gap: '30px', justifyItems: 'center' }, 
-  btnWin: { flex: 1, background: 'linear-gradient(135deg, #15803d, #16a34a)', color: '#fff', border: '1px solid #22c55e', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2)' },
-  btnLose: { flex: 1, background: 'linear-gradient(135deg, #b91c1c, #dc2626)', color: '#fff', border: '1px solid #ef4444', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2)' },
-  rcCard: { position: 'relative', background: '#1b1c2b', width: '300px', borderRadius: '12px', padding: '12px', border: '1px solid #2a2d40', boxShadow: '0 10px 25px rgba(0,0,0,0.4)', boxSizing: 'border-box' },
-  rcBanner: { position: 'relative', height: '90px', borderRadius: '8px', backgroundSize: 'cover', backgroundPosition: 'center', overflow: 'hidden', marginBottom: '15px', border: '1px solid #11131c' },
-  rcBannerOverlay: { position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(27,28,43,0.1), rgba(27,28,43,0.95))' },
-  rcBannerTitle: { position: 'absolute', bottom: '10px', left: '15px', margin: 0, color: 'white', fontSize: '18px', fontWeight: '900', letterSpacing: '1px', textShadow: '2px 2px 0px rgba(0,0,0,0.8)' },
-  rcFeatures: { padding: '0 5px', marginBottom: '15px' },
-  rcFeatureRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' },
-  rcFeatureLabel: { color: '#cbd5e1', fontSize: '12px', fontWeight: 'bold', width: '105px' },
-  rcBarContainer: { flex: 1, margin: '0 8px', background: '#11131c', height: '10px', borderRadius: '5px', overflow: 'hidden', border: '1px solid #2a2d40' },
-  rcBarFill: { background: 'linear-gradient(90deg, #6d28d9, #8b5cf6)', height: '100%', borderRadius: '5px' },
-  rcFeatureValue: { color: '#fff', fontSize: '12px', fontWeight: 'bold', width: '25px', textAlign: 'right' },
-  rcHamsterBox: { position: 'relative', background: '#141522', border: '1px solid #2a2d40', borderRadius: '8px', padding: '16px 10px 12px 10px', minHeight: '140px', marginBottom: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box', boxShadow: 'inset 0 4px 10px rgba(0,0,0,0.2)' },
-  rcLevelBadge: { position: 'absolute', top: '8px', left: '8px', background: '#0d9488', color: 'white', padding: '3px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: '900', boxShadow: '0 2px 4px rgba(0,0,0,0.4)' },
-  rcIconTopRight: { position: 'absolute', top: '8px', right: '8px', background: '#1b1c2b', border: '1px solid #3b4260', padding: '4px', borderRadius: '6px', fontSize: '12px' },
-  rcHamsterName: { color: 'white', fontSize: '15px', fontWeight: 'bold', marginBottom: '8px', marginTop: '2px', textAlign: 'center', textShadow: '0 2px 4px rgba(0,0,0,0.5)' },
-  rcHiddenBonus: { display: 'flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '900', marginBottom: '8px', border: '1px solid', boxShadow: '0 2px 4px rgba(0,0,0,0.4)' },
-  rcHamsterImg: { height: '65px', objectFit: 'contain', marginBottom: '10px', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.4))' },
-  rcTimerPill: { background: '#090a0f', color: '#cbd5e1', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', border: '1px solid #1e293b', marginBottom: '8px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)' },
-  rcMoreInfo: { fontSize: '13px', fontWeight: 'bold', textAlign: 'center', letterSpacing: '0.5px', textShadow: '0 1px 2px rgba(0,0,0,0.8)' },
-  rcViewBtn: { width: '100%', color: 'white', border: '1px solid rgba(255,255,255,0.1)', padding: '14px', borderRadius: '8px', fontSize: '14px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase', cursor: 'pointer', boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.2), 0 4px 10px rgba(0,0,0,0.3)', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }
+  page: { backgroundColor: '#0b1017', minHeight: '100vh', color: '#dce6ef', fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif', padding: '10px 22px 54px' },
+  container: { maxWidth: '1160px', margin: '0 auto' },
+  navBar: { display: 'none' },
+  controlPanel: { display: 'flex', flexDirection: 'column', gap: '13px' },
+  contenedorFormulario: { background: '#121a24', padding: '30px', borderRadius: '12px', border: '1px solid #283443', boxSizing: 'border-box' },
+  label: { display: 'block', color: '#8ca1b5', fontSize: '10px', fontWeight: 760, letterSpacing: '1.12px', textTransform: 'uppercase' },
+  input: { width: '100%', backgroundColor: '#0c131c', border: '1px solid #2a3949', padding: '12px 13px', borderRadius: '7px', color: '#e1eaf4', fontSize: '13px', outline: 'none', boxSizing: 'border-box', transition: 'border-color .18s, box-shadow .18s' },
+  dropdownList: { position: 'absolute', top: '100%', left: 0, right: 0, background: '#15202b', border: '1px solid #384a59', borderRadius: '8px', maxHeight: '240px', overflowY: 'auto', zIndex: 100, marginTop: '5px', boxShadow: '0 14px 30px rgba(0,0,0,.4)' },
+  dropdownItem: { padding: '11px 13px', color: '#dce8f1', cursor: 'pointer', borderBottom: '1px solid #263441', fontSize: '12px' },
+  rcCard: { position: 'relative', background: '#17212b', width: '300px', borderRadius: '10px', padding: '11px', border: '1px solid #2c3949', boxSizing: 'border-box' },
+  rcBanner: { position: 'relative', height: '105px', borderRadius: '7px', backgroundSize: 'cover', backgroundPosition: 'center', overflow: 'hidden', marginBottom: '14px' },
+  rcBannerOverlay: { position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(12,20,29,.06),rgba(12,20,29,.9))' },
+  rcBannerTitle: { position: 'absolute', bottom: '11px', left: '12px', margin: 0, color: '#f8fafc', fontSize: '16px', fontWeight: 820, letterSpacing: '.03em', textShadow: '0 2px 4px rgba(0,0,0,.85)' },
+  rcFeatures: { padding: '0 5px', marginBottom: '14px' },
+  rcFeatureRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '7px', marginBottom: '8px' },
+  rcFeatureLabel: { color: '#8b9eb0', fontSize: '11px', fontWeight: 540, width: '84px' },
+  rcBarContainer: { flex: 1, margin: '0 5px', background: '#263342', height: '6px', borderRadius: '50px', overflow: 'hidden' },
+  rcBarFill: { background: '#6381ba', height: '100%', borderRadius: '50px' },
+  rcFeatureValue: { color: '#e0eaf3', fontSize: '11px', fontWeight: 720, width: '25px', textAlign: 'right' },
+  rcHamsterBox: { position: 'relative', background: '#111923', border: '1px solid #263340', borderRadius: '7px', padding: '16px 10px 14px', minHeight: '145px', marginBottom: '11px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' },
+  rcLevelBadge: { position: 'absolute', top: '8px', left: '8px', background: '#235a62', color: '#d9f5f1', padding: '4px 7px', borderRadius: '4px', fontSize: '10px', fontWeight: 740 },
+  rcIconTopRight: { position: 'absolute', top: '8px', right: '8px', color: '#7f9eac', fontWeight: 800, letterSpacing: '.13em', fontSize: '10px' },
+  rcHamsterName: { color: '#eaf1f8', fontSize: '14px', fontWeight: 710, marginBottom: '8px', marginTop: '1px', textAlign: 'center' },
+  rcHiddenBonus: { display: 'flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '50px', fontSize: '10px', fontWeight: 700, marginBottom: '6px', border: '1px solid' },
+  rcHamsterImg: { height: '76px', objectFit: 'contain', marginBottom: '9px', filter: 'drop-shadow(0 5px 6px rgba(0,0,0,.2))' },
+  rcTimerPill: { color: '#a7b8c8', padding: '4px 11px', borderRadius: '5px', fontSize: '11px', fontWeight: 720, background: '#192633', marginBottom: '7px' },
+  rcMoreInfo: { fontSize: '11px', fontWeight: 750, textAlign: 'center', letterSpacing: '.09em' },
+  rcViewBtn: { width: '100%', color: '#eaf2fc', border: '1px solid #47547a', padding: '12px', borderRadius: '7px', fontSize: '12px', fontWeight: 730, letterSpacing: '.015em', cursor: 'pointer' },
+  gridActivas: { display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'flex-start' },
 };
