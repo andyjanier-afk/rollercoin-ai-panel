@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 // ==========================================
@@ -8,7 +8,31 @@ const SUPABASE_URL = 'https://khyuzutnvoqeqkllnsmy.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Z9NzjlREhW6RgIqQ3zZ58A_5G6ivYHX';
 const FASTAPI_URL = 'https://rollercoin-ai-backend.onrender.com';
 
+// La publishable key puede estar en el navegador. NO uses service_role/secret keys aquí.
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const hoyLocal = () => {
+  const hoy = new Date();
+  const dos = n => String(n).padStart(2, '0');
+  return `${hoy.getFullYear()}-${dos(hoy.getMonth() + 1)}-${dos(hoy.getDate())}`;
+};
+
+const firmaDatos = datos => JSON.stringify([
+  datos.hamster,
+  Number(datos.stats),
+  datos.expedicion,
+  Number(datos.porcentaje)
+]);
+
+// Muestra el identificador histórico real sin confundirlo con otro mapa.
+const resolverMapa = valor => MAPAS_OFICIALES.find(m => m.valor === valor) || {
+  nombre: `Expedición ${valor || 'desconocida'}`,
+  valor,
+  horas: String(valor || '?'),
+  dificultad: valor === '12h' ? 5 : 0,
+  bg: '',
+};
+
 
 // ==========================================
 // DATOS BASE
@@ -94,7 +118,8 @@ const getBasePercent = (stats) => {
 const calcularExitoJuego = (stats, dificultadMapa, bonoHamster) => {
   const probBase = getBasePercent(stats);
   const total = probBase - (dificultadMapa * 1.11) + bonoHamster;
-  return total.toFixed(2);
+  // Estimación propia de la web: nunca se presenta como probabilidad oficial verificada.
+  return Number(Math.max(0, Math.min(100, total)).toFixed(2));
 };
 
 // ==========================================
@@ -161,11 +186,12 @@ function SelectorMapa({ valorActual, onSelect }) {
   );
 }
 
-function RollerCard({ mapa, hamsterName, stats, nivel, probabilidad, viveIA, onAction, actionLabel, isPreview, bonoManual }) {
+function RollerCard({ mapa, hamsterName, stats, nivel, probabilidad, viveIA, onAction, actionLabel, isPreview, bonoManual, disabled = false }) {
   const hamsterObj = HAMSTERS_DEFAULT.find(h => h.nombre === hamsterName) || HAMSTERS_DEFAULT[0];
   const colorBoton = isPreview ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 'linear-gradient(135deg, #7c3aed, #9333ea)';
   const imagenCalculada = isPreview || hamsterName ? getImagenEvolucion(hamsterObj.slug, nivel) : '';
   const bonoAMostrar = bonoManual !== undefined ? bonoManual : hamsterObj.bono;
+  const tienePrediccion = probabilidad !== null && probabilidad !== undefined && probabilidad !== '' && Number.isFinite(Number(probabilidad));
 
   return (
     <div className="card-hover" style={styles.rcCard}>
@@ -200,9 +226,9 @@ function RollerCard({ mapa, hamsterName, stats, nivel, probabilidad, viveIA, onA
           )}
         </div>
         
-        <img src={imagenCalculada} alt={hamsterName} style={styles.rcHamsterImg} onError={(e) => { e.target.src = hamsterObj.img; }} />
+        <img src={imagenCalculada} alt={hamsterName} style={styles.rcHamsterImg} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = hamsterObj.img; }} />
         
-        {probabilidad ? (
+        {tienePrediccion ? (
           <div style={styles.rcTimerPill}>
             PROB IA: <span style={{ color: viveIA === 'SI' ? '#4ade80' : '#f87171' }}>{probabilidad}%</span>
           </div>
@@ -210,14 +236,14 @@ function RollerCard({ mapa, hamsterName, stats, nivel, probabilidad, viveIA, onA
           <div style={styles.rcTimerPill}>SIN SIMULAR</div>
         )}
         
-        {probabilidad && (
+        {tienePrediccion && (
           <div style={{ ...styles.rcMoreInfo, color: viveIA === 'SI' ? '#4ade80' : '#f87171' }}>
             {viveIA === 'SI' ? 'SOBREVIVE' : 'MUERE'}
           </div>
         )}
       </div>
 
-      <button className="btn-hover" onClick={onAction} style={{ ...styles.rcViewBtn, background: colorBoton }}>
+      <button className="btn-hover" onClick={onAction} disabled={disabled} style={{ ...styles.rcViewBtn, background: colorBoton, opacity: disabled ? 0.55 : 1, cursor: disabled ? 'wait' : 'pointer' }}>
         {actionLabel}
       </button>
     </div>
@@ -229,40 +255,133 @@ function RollerCard({ mapa, hamsterName, stats, nivel, probabilidad, viveIA, onA
 // ==========================================
 export default function App() {
   const [activas, setActivas] = useState([]);
-  const [historial, setHistorial] = useState([]); 
-  const [metricas, setMetricas] = useState(null); 
+  const [historial, setHistorial] = useState([]);
+  const [metricas, setMetricas] = useState(null);
   const [resumenHamsters, setResumenHamsters] = useState([]);
-  const [simulacion, setSimulacion] = useState(null); 
-  
+  const [evaluacionModelo, setEvaluacionModelo] = useState(null);
+  const [estadoModelo, setEstadoModelo] = useState('');
+  const [expedicionesEntrenables, setExpedicionesEntrenables] = useState(0);
+  const [simulacion, setSimulacion] = useState(null);
+  const [simulando, setSimulando] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [procesandoId, setProcesandoId] = useState(null);
+  const [errorDashboard, setErrorDashboard] = useState('');
+  const [mensajeOperacion, setMensajeOperacion] = useState('');
+  const [usuario, setUsuario] = useState(null);
+  const [emailAcceso, setEmailAcceso] = useState('');
+  const [enviandoEnlace, setEnviandoEnlace] = useState(false);
+  const [mensajeAcceso, setMensajeAcceso] = useState('');
+  const operacionEnCurso = useRef(false);
+  const versionSimulacion = useRef(0);
+
   // Estado para el Modal Personalizado
   const [modalConfig, setModalConfig] = useState({ isOpen: false, type: '', id: null, title: '', message: '', onConfirm: null });
 
-  const hoy = new Date().toISOString().split('T')[0];
-  const formPorDefecto = { fecha: hoy, hamster: "Cuscuz", nivel: 50, stats: 255, expedicion: '30h', porcentaje: '74.71', bono: 0 };
+  const hoy = hoyLocal();
+  const formPorDefecto = {
+    fecha: hoy,
+    hamster: 'Cuscuz',
+    nivel: 50,
+    stats: 255,
+    expedicion: '30h',
+    porcentaje: calcularExitoJuego(255, 10, 0),
+    bono: 0
+  };
 
   const [form, setForm] = useState(() => {
-    const guardado = localStorage.getItem('rc_expeditions_form');
-    return guardado ? { ...formPorDefecto, ...JSON.parse(guardado), fecha: hoy } : formPorDefecto;
+    try {
+      const guardado = JSON.parse(localStorage.getItem('rc_expeditions_form') || '{}');
+      const combinado = { ...formPorDefecto, ...guardado, fecha: hoy };
+      const h = HAMSTERS_DEFAULT.find(x => x.nombre === combinado.hamster) || HAMSTERS_DEFAULT[0];
+      const mapa = MAPAS_OFICIALES.find(x => x.valor === combinado.expedicion) || MAPAS_OFICIALES[0];
+      const nivel = Math.max(1, Math.min(50, Number(combinado.nivel) || h.nivelInicial || 1));
+      const bono = Number.isFinite(Number(combinado.bono)) ? Number(combinado.bono) : h.bono;
+      const stats = h.baseStats + nivel - 1;
+      return {
+        ...combinado, hamster: h.nombre, nivel, stats,
+        expedicion: mapa.valor, bono,
+        porcentaje: calcularExitoJuego(stats, mapa.dificultad, bono)
+      };
+    } catch {
+      return formPorDefecto;
+    }
   });
 
-  useEffect(() => { localStorage.setItem('rc_expeditions_form', JSON.stringify(form)); }, [form]);
+  useEffect(() => {
+    localStorage.setItem('rc_expeditions_form', JSON.stringify(form));
+  }, [form]);
+
+  // La lectura del historial es pública según tus políticas RLS actuales.
+  // Para escribir, el frontend exige sesión y la BD debe permitirlo SOLO a tu UID.
+  useEffect(() => {
+    let montado = true;
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) console.error('Error de sesión:', error);
+      if (montado) setUsuario(data?.session?.user || null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_evento, session) => {
+      setUsuario(session?.user || null);
+    });
+    return () => { montado = false; subscription.unsubscribe(); };
+  }, []);
+
+  const solicitarAcceso = async (event) => {
+    event?.preventDefault();
+    const email = emailAcceso.trim();
+    if (!email) return;
+    setEnviandoEnlace(true);
+    setMensajeAcceso('');
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: window.location.origin,
+          shouldCreateUser: false,
+        },
+      });
+      if (error) throw error;
+      setMensajeAcceso('Si el usuario está habilitado, recibirás un enlace de acceso en tu correo.');
+    } catch (error) {
+      setMensajeAcceso(`No se pudo solicitar acceso: ${error.message}`);
+    } finally {
+      setEnviandoEnlace(false);
+    }
+  };
+
+  const cerrarSesion = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) setMensajeAcceso(`Error al cerrar sesión: ${error.message}`);
+  };
+
+  const requerirPermiso = () => {
+    if (usuario) return true;
+    setMensajeOperacion('Inicia sesión como administrador para enviar, finalizar o borrar expediciones.');
+    return false;
+  };
 
   const cargarDashboard = async () => {
+    setErrorDashboard('');
     try {
-      const { data: act } = await supabase.from('expediciones').select('*').is('finalizado', null).order('id', { ascending: false });
-      const { data: hist } = await supabase.from('expediciones').select('*').not('finalizado', 'is', null).order('fecha', { ascending: false }).order('id', { ascending: false }).limit(50);
-      
-      setActivas(act || []);
-      setHistorial(hist || []);
+      const [respuestaActivas, respuestaHist] = await Promise.all([
+        supabase.from('expediciones').select('*').is('finalizado', null).order('id', { ascending: false }),
+        supabase.from('expediciones').select('*').not('finalizado', 'is', null).order('fecha', { ascending: false }).order('id', { ascending: false }).limit(50),
+      ]);
+      if (respuestaActivas.error) throw respuestaActivas.error;
+      if (respuestaHist.error) throw respuestaHist.error;
+      setActivas(respuestaActivas.data || []);
+      setHistorial(respuestaHist.data || []);
 
       const res = await fetch(`${FASTAPI_URL}/metricas`);
-      if (res.ok) {
-        const data = await res.json();
-        setMetricas(data.metricas);
-        setResumenHamsters(data.resumen_hamsters || []);
-      }
-    } catch (err) { 
-      console.error("Error sincronizando:", err);
+      const datos = await res.json();
+      if (!res.ok) throw new Error(datos.detail || `Error del backend: ${res.status}`);
+      setMetricas(datos.metricas);
+      setResumenHamsters(datos.resumen_hamsters || []);
+      setEvaluacionModelo(datos.evaluacion_modelo || null);
+      setEstadoModelo(datos.estado_modelo || 'desconocido');
+      setExpedicionesEntrenables(datos.expediciones_entrenables || 0);
+    } catch (error) {
+      setErrorDashboard(`No se pudo actualizar el tablero: ${error.message}`);
+      console.error('Error sincronizando:', error);
     }
   };
 
@@ -270,7 +389,7 @@ export default function App() {
 
   const recalcularTodo = (nombreH, nivelActual, mapaValor, bonoManual, esNuevoHamster = false) => {
     const hObj = HAMSTERS_DEFAULT.find(x => x.nombre === nombreH) || HAMSTERS_DEFAULT[0];
-    const mObj = MAPAS_OFICIALES.find(m => m.valor === mapaValor) || MAPAS_OFICIALES[5];
+    const mObj = MAPAS_OFICIALES.find(m => m.valor === mapaValor) || MAPAS_OFICIALES[0];
     
     let lvl = parseInt(nivelActual) || 1;
     if (esNuevoHamster) { lvl = hObj.nivelInicial || 1; }
@@ -282,6 +401,7 @@ export default function App() {
     const porcentajeCalc = calcularExitoJuego(statsCalc, mObj.dificultad, bonoFinal);
     
     setForm(prev => ({...prev, hamster: nombreH, nivel: lvl, stats: statsCalc, expedicion: mapaValor, porcentaje: porcentajeCalc, bono: bonoFinal}));
+    versionSimulacion.current += 1; // invalida las respuestas anteriores si cambió el formulario
     setSimulacion(null);
   };
 
@@ -300,51 +420,116 @@ export default function App() {
   };
 
   const simular = async () => {
+    if (simulando) return;
+    const versionActual = ++versionSimulacion.current;
+    setSimulacion(null);
+    setSimulando(true);
+    setMensajeOperacion('');
+
     try {
-      const porcentajeFix = parseFloat(form.porcentaje.toString().replace(',', '.'));
-      const res = await fetch(`${FASTAPI_URL}/simular`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hamster: form.hamster, stats: Number(form.stats), expedicion: form.expedicion, porcentaje: porcentajeFix })
+      const porcentaje = Number(String(form.porcentaje).replace(',', '.'));
+      const stats = Number(form.stats);
+      if (!Number.isFinite(porcentaje) || porcentaje < 0 || porcentaje > 100 ||
+          !Number.isFinite(stats) || stats < 0) {
+        throw new Error('Las estadísticas o el porcentaje no son válidos.');
+      }
+
+      const respuesta = await fetch(`${FASTAPI_URL}/simular`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hamster: form.hamster,
+          stats,
+          expedicion: form.expedicion,
+          porcentaje,
+        })
       });
-      setSimulacion(await res.json());
-    } catch(err) { alert('Error: Asegúrate de que el backend en Render esté activo.'); }
+      const datos = await respuesta.json();
+      if (!respuesta.ok || datos.error || typeof datos.probabilidad_ia !== 'number') {
+        const detalle = Array.isArray(datos.detail)
+          ? datos.detail.map(x => x.msg).join('; ')
+          : datos.detail;
+        throw new Error(detalle || datos.error || `Error HTTP ${respuesta.status}`);
+      }
+      if (versionActual === versionSimulacion.current) {
+        setSimulacion({ ...datos, _firma: firmaDatos(form) });
+      }
+    } catch (error) {
+      if (versionActual === versionSimulacion.current) {
+        setMensajeOperacion(`No se pudo simular: ${error.message}`);
+      }
+      console.error('Error de simulación:', error);
+    } finally {
+      setSimulando(false);
+    }
   };
 
   // --- LÓGICA DE GUARDAR (MODAL) ---
   const confirmarGuardar = (e) => {
-    if(e) e.preventDefault();
-    const mapaSelec = MAPAS_OFICIALES.find(m => m.valor === form.expedicion)?.nombre || form.expedicion;
+    e?.preventDefault();
+    if (!requerirPermiso() || operacionEnCurso.current) return;
+    const mapaSelec = resolverMapa(form.expedicion).nombre;
     setModalConfig({
       isOpen: true,
       type: 'send',
       title: '🚀 ENVIAR EXPEDICIÓN',
-      message: `¿Confirmas que deseas enviar a ${form.hamster} a la expedición de ${mapaSelec}? Esto prevendrá envíos duplicados.`,
+      message: `¿Confirmas que deseas enviar a ${form.hamster} a la expedición de ${mapaSelec}?`,
       onConfirm: ejecutarGuardar
     });
   };
 
   const ejecutarGuardar = async () => {
-    setModalConfig({ ...modalConfig, isOpen: false }); // Cerrar modal
-    const nivelFinal = form.nivel === '' ? 1 : form.nivel;
-    const porcentajeLimpio = parseFloat(String(form.porcentaje).replace(',', '.').replace('%', ''));
+    if (!requerirPermiso() || operacionEnCurso.current) return;
+    operacionEnCurso.current = true;
+    setGuardando(true);
+    setMensajeOperacion('');
+    setModalConfig(prev => ({ ...prev, isOpen: false }));
 
-    let nuevaExpedicion = { fecha: form.fecha, hamster: form.hamster, nivel: Number(nivelFinal), stats: Number(form.stats), expedicion: form.expedicion, porcentaje: porcentajeLimpio, finalizado: null };
+    try {
+      const nivelFinal = Number(form.nivel) || 1;
+      const porcentajeLimpio = Number(String(form.porcentaje).replace(',', '.').replace('%', ''));
+      if (!Number.isFinite(porcentajeLimpio) || porcentajeLimpio < 0 || porcentajeLimpio > 100) {
+        throw new Error('El porcentaje de la expedición no es válido.');
+      }
+      const nuevaExpedicion = {
+        fecha: form.fecha,
+        hamster: form.hamster,
+        nivel: nivelFinal,
+        stats: Number(form.stats),
+        expedicion: form.expedicion,
+        porcentaje: porcentajeLimpio,
+        finalizado: null,
+      };
 
-    if (simulacion) {
-      nuevaExpedicion.probabilidad_ia = simulacion.probabilidad_ia;
-      nuevaExpedicion.vive_ia = simulacion.vive_ia;
-    }
+      // No guardar una predicción que pertenezca a otra selección anterior.
+      if (simulacion && simulacion._firma === firmaDatos(form)) {
+        nuevaExpedicion.probabilidad_ia = simulacion.probabilidad_ia;
+        nuevaExpedicion.vive_ia = simulacion.vive_ia;
+      }
 
-    let res = await supabase.from('expediciones').insert([nuevaExpedicion]);
-    if(res.error) alert("Error DB:\n" + res.error.message);
-    else { 
-      setSimulacion(null); 
-      await cargarDashboard(); 
+      const { data, error } = await supabase
+        .from('expediciones')
+        .insert([nuevaExpedicion])
+        .select('id')
+        .single();
+      if (error) throw error;
+      if (!data?.id) throw new Error('Supabase no confirmó la creación del registro.');
+
+      setSimulacion(null);
+      setMensajeOperacion(`Expedición registrada correctamente (ID ${data.id}).`);
+      await cargarDashboard();
+    } catch (error) {
+      setMensajeOperacion(`No se pudo guardar la expedición: ${error.message}`);
+      console.error('Error al guardar:', error);
+    } finally {
+      operacionEnCurso.current = false;
+      setGuardando(false);
     }
   };
 
   // --- LÓGICA DE ELIMINAR (MODAL) ---
   const confirmarEliminar = (id, hamsterName) => {
+    if (!requerirPermiso() || operacionEnCurso.current) return;
     setModalConfig({
       isOpen: true,
       type: 'delete',
@@ -355,17 +540,52 @@ export default function App() {
   };
 
   const ejecutarEliminar = async (id) => {
-    setModalConfig({ ...modalConfig, isOpen: false }); // Cerrar modal
-    await supabase.from('expediciones').delete().eq('id', id);
-    cargarDashboard();
+    if (!requerirPermiso() || operacionEnCurso.current) return;
+    operacionEnCurso.current = true;
+    setProcesandoId(id);
+    setMensajeOperacion('');
+    setModalConfig(prev => ({ ...prev, isOpen: false }));
+    try {
+      const { data, error } = await supabase.from('expediciones')
+        .delete().eq('id', id).is('finalizado', null).select('id');
+      if (error) throw error;
+      if (!data?.length) throw new Error('Registro inexistente o sin permiso para eliminar.');
+      setMensajeOperacion('Expedición activa eliminada correctamente.');
+      await cargarDashboard();
+    } catch (error) {
+      setMensajeOperacion(`No se pudo eliminar: ${error.message}`);
+      console.error('Error al eliminar:', error);
+    } finally {
+      operacionEnCurso.current = false;
+      setProcesandoId(null);
+    }
   };
 
   const finalizar = async (id, sobrevivio) => {
-    await supabase.from('expediciones').update({ finalizado: sobrevivio }).eq('id', id);
-    cargarDashboard();
+    if (!requerirPermiso() || operacionEnCurso.current) return;
+    operacionEnCurso.current = true;
+    setProcesandoId(id);
+    setMensajeOperacion('');
+    try {
+      const { data, error } = await supabase.from('expediciones')
+        .update({ finalizado: sobrevivio })
+        .eq('id', id)
+        .is('finalizado', null)
+        .select('id');
+      if (error) throw error;
+      if (!data?.length) throw new Error('El registro ya estaba cerrado o no tienes permiso.');
+      setMensajeOperacion(`Resultado registrado: ${sobrevivio ? 'VIVIÓ' : 'MURIÓ'}. Las métricas del modelo pueden reflejarlo después de actualizar su caché.`);
+      await cargarDashboard();
+    } catch (error) {
+      setMensajeOperacion(`No se pudo finalizar: ${error.message}`);
+      console.error('Error al finalizar:', error);
+    } finally {
+      operacionEnCurso.current = false;
+      setProcesandoId(null);
+    }
   };
 
-  const mapaSeleccionado = MAPAS_OFICIALES.find(m => m.valor === form.expedicion) || MAPAS_OFICIALES[5];
+  const mapaSeleccionado = resolverMapa(form.expedicion);
 
   // ==========================================
   // ESTILOS GLOBALES Y MEDIA QUERIES
@@ -394,12 +614,23 @@ export default function App() {
     .form-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; }
     .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
     .card-container { display: flex; justify-content: center; align-items: center; }
+    .ia-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .ia-metric { background: #101827; border: 1px solid #27384f; border-radius: 10px; padding: 15px; }
+    .ia-metric strong { display: block; font-size: 25px; margin-top: 6px; }
+    .account-box { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+    .account-box input { max-width: 260px; padding: 10px; background: #0b0d14; border: 1px solid #344258; color: white; border-radius: 7px; }
+    .account-box button { padding: 10px 13px; border-radius: 7px; background: #155e75; color: white; cursor: pointer; border: 1px solid #22d3ee; }
+    .account-box button:disabled { opacity: .6; cursor: wait; }
+    .system-message { background: #16263b; color: #e0f2fe; padding: 11px 15px; border: 1px solid #245b89; border-radius: 8px; margin: 0 0 17px; font-size: 13px; line-height: 1.5; }
+    .test-card { background: #121827; border: 1px solid #334155; border-radius: 12px; margin-bottom: 24px; padding: 18px; color: #cbd5e1; }
+    .test-card strong { color: #fff; }
 
     @media (max-width: 768px) {
       .form-grid { grid-template-columns: 1fr; gap: 30px; padding: 20px !important; }
       .stats-grid { grid-template-columns: 1fr; }
       .card-container { width: 100%; }
       .card-container > div { width: 100% !important; max-width: 320px; }
+      .ia-details { grid-template-columns: 1fr; }
       .historial-item { grid-template-columns: 1fr; gap: 15px; text-align: center; }
       .historial-item > div { justify-content: center; text-align: center; }
     }
@@ -436,8 +667,9 @@ export default function App() {
               <button className="modal-btn btn-cancel" onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}>
                 Cancelar
               </button>
-              <button 
-                className={`modal-btn ${modalConfig.type === 'delete' ? 'btn-confirm-delete' : 'btn-confirm-send'}`} 
+              <button
+                className={`modal-btn ${modalConfig.type === 'delete' ? 'btn-confirm-delete' : 'btn-confirm-send'}`}
+                disabled={guardando || procesandoId !== null}
                 onClick={modalConfig.onConfirm}
               >
                 {modalConfig.type === 'delete' ? 'Borrar' : 'Confirmar Envío'}
@@ -449,7 +681,29 @@ export default function App() {
 
       <div style={styles.container}>
         <div style={styles.navBar}>
-          <h1 style={{ margin: 0, fontSize: '20px', color: '#fff', letterSpacing: '1px' }}>🐹 AI EXPEDITIONS CONTROL PANEL</h1>
+          <div style={{ textAlign: 'center' }}>
+            <h1 style={{ margin: 0, fontSize: '20px', color: '#fff', letterSpacing: '1px' }}>🐹 AI EXPEDITIONS CONTROL PANEL</h1>
+            <div style={{ color: '#64748b', fontSize: '12px', marginTop: 6 }}>RollerCoin AI v2.0 · Predicciones estadísticas, no garantías</div>
+            {usuario ? (
+              <div className="account-box">
+                <span style={{ color: '#86efac', fontSize: 12 }}>🔓 Administrador: {usuario.email || 'Sesión activa'}</span>
+                <button type="button" onClick={cerrarSesion}>Cerrar sesión</button>
+              </div>
+            ) : (
+              <form className="account-box" onSubmit={solicitarAcceso}>
+                <span style={{ color: '#94a3b8', fontSize: 12 }}>🔒 Inicia sesión para registrar resultados:</span>
+                <input type="email" required aria-label="Correo del administrador" placeholder="correo del administrador" value={emailAcceso} onChange={e => setEmailAcceso(e.target.value)} />
+                <button type="submit" disabled={enviandoEnlace}>{enviandoEnlace ? 'Enviando...' : 'Recibir enlace de acceso'}</button>
+              </form>
+            )}
+            {mensajeAcceso && <div style={{ marginTop: 8, color: '#fcd34d', fontSize: 12 }}>{mensajeAcceso}</div>}
+          </div>
+        </div>
+
+        {mensajeOperacion && <div className="system-message" role="status">{mensajeOperacion}</div>}
+        {errorDashboard && <div className="system-message" role="alert">{errorDashboard}</div>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+          <button type="button" onClick={cargarDashboard} style={{ background: '#1e293b', color: '#dbeafe', border: '1px solid #334155', borderRadius: 8, padding: '9px 14px', cursor: 'pointer' }}>↻ Actualizar tablero</button>
         </div>
 
         {/* ========================================== */}
@@ -470,8 +724,8 @@ export default function App() {
               <span style={{...styles.metricVal, color: '#f87171'}}>{metricas.murieron_num} <small style={{fontSize:'12px'}}>({metricas.murieron_porc}%)</small></span>
             </div>
             <div style={{...styles.metricCard, borderLeft: '4px solid #0ea5e9'}}>
-              <span style={styles.metricLabel}>🤖 ACIERTOS IA</span>
-              <span style={{...styles.metricVal, color: '#38bdf8'}}>{metricas.ia_aciertos} <small style={{fontSize:'12px'}}>({metricas.ia_precision_porc}%)</small></span>
+              <span style={styles.metricLabel}>🤖 ACIERTOS REGISTRADOS IA</span>
+              <span style={{...styles.metricVal, color: '#38bdf8'}}>{metricas.ia_aciertos} <small style={{fontSize:'12px'}}>({metricas.ia_exactitud_porc ?? metricas.ia_precision_porc}%)</small></span>
             </div>
             <div style={{...styles.metricCard, borderLeft: '4px solid #f97316'}}>
               <span style={styles.metricLabel}>❌ FALLOS IA</span>
@@ -479,6 +733,34 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* PRUEBA TEMPORAL: DIFERENTE DE LAS PREDICCIONES HISTÓRICAS REGISTRADAS */}
+        <section className="test-card" aria-label="Evaluación de la inteligencia artificial">
+          <div style={{ fontWeight: 900, fontSize: 15, marginBottom: 12, color: '#e0f2fe' }}>🧪 EVALUACIÓN REAL DE LA IA v2</div>
+          <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 12 }}>
+            Estado del modelo: <strong>{estadoModelo || 'Cargando...'}</strong> · Registros entrenables: <strong>{expedicionesEntrenables}</strong>
+          </div>
+          {evaluacionModelo ? (
+            <>
+              <div className="ia-details">
+                <div className="ia-metric"><span>Exactitud IA (prueba)</span><strong style={{ color: '#4ade80' }}>{evaluacionModelo.exactitud_ia_porc}%</strong></div>
+                <div className="ia-metric"><span>Exactitud estimación juego (prueba)</span><strong style={{ color: '#7dd3fc' }}>{evaluacionModelo.exactitud_oficial_porc}%</strong></div>
+                <div className="ia-metric"><span>Brier Score IA ↓</span><strong>{evaluacionModelo.brier_ia}</strong></div>
+                <div className="ia-metric"><span>Brier estimación juego ↓</span><strong>{evaluacionModelo.brier_oficial}</strong></div>
+              </div>
+              <p style={{ marginBottom: 0, fontSize: 12, lineHeight: 1.6 }}>
+                Entrenamiento: {evaluacionModelo.expediciones_entrenamiento} · Prueba cronológica: {evaluacionModelo.expediciones_prueba}. Menor Brier es mejor.
+                El porcentaje de referencia proviene de la fórmula/valor que guardaste en la web; no se verifica con el servidor del juego.
+                Esta comparación no demuestra superioridad estadística.
+              </p>
+            </>
+          ) : (
+            <p style={{ fontSize: 12, margin: 0 }}>Aún no hay una evaluación temporal disponible con los datos actuales.</p>
+          )}
+          {metricas && <p style={{ marginBottom: 0, fontSize: 12, color: '#94a3b8' }}>
+            Histórico de predicciones guardadas: {metricas.ia_predicciones_evaluadas ?? 0} evaluadas · {metricas.ia_aciertos} aciertos · {metricas.ia_fallos} fallos. Esta cifra es distinta de la prueba cronológica.
+          </p>}
+        </section>
 
         {/* ========================================== */}
         {/* PANEL DE RENDIMIENTO INDIVIDUAL (CARRUSEL) */}
@@ -543,10 +825,10 @@ export default function App() {
               </div>
             </div>
 
-            <label style={styles.label}>% TEÓRICO DEL JUEGO</label>
+            <label style={styles.label}>% ESTIMADO DEL JUEGO (FÓRMULA LOCAL)</label>
             <input type="text" value={`${form.porcentaje}%`} readOnly style={{ ...styles.input, backgroundColor: '#06070a', color: '#4ade80', borderColor: 'rgba(74, 222, 128, 0.3)', fontWeight: 'bold', cursor: 'not-allowed', boxShadow: 'none' }} />
 
-            <button className="btn-hover" onClick={simular} style={styles.btnSimular}>🔍 PREDECIR SUPERVIVENCIA (FAST API)</button>
+            <button className="btn-hover" onClick={simular} disabled={simulando} style={{...styles.btnSimular, opacity: simulando ? 0.6 : 1}}>{simulando ? '⏳ SIMULANDO...' : '🔍 PREDECIR SUPERVIVENCIA (FAST API)'}</button>
           </div>
 
           <div className="card-container">
@@ -557,13 +839,28 @@ export default function App() {
               nivel={form.nivel} 
               probabilidad={simulacion ? simulacion.probabilidad_ia : null}
               viveIA={simulacion ? simulacion.vive_ia : null}
-              onAction={confirmarGuardar} // Llama al Modal
-              actionLabel="ENVIAR DE EXPEDICIÓN"
+              onAction={confirmarGuardar}
+              disabled={guardando || procesandoId !== null}
+              actionLabel={guardando ? 'GUARDANDO...' : 'ENVIAR DE EXPEDICIÓN'}
               isPreview={true}
               bonoManual={form.bono} 
             />
           </div>
         </div>
+
+        {/* Comparación de probabilidades de la simulación actual */}
+        {simulacion && (
+          <section className="test-card" style={{ marginTop: 23 }} aria-label="Detalles de la predicción">
+            <h3 style={{ color: '#fff', fontSize: 15, marginTop: 0 }}>🤖 COMPARACIÓN DE SUPERVIVENCIA</h3>
+            <div className="ia-details">
+              <div className="ia-metric"><span>Probabilidad IA</span><strong style={{ color: simulacion.vive_ia === 'SI' ? '#4ade80' : '#fb7185' }}>{simulacion.probabilidad_ia}%</strong><small>IA: {simulacion.vive_ia === 'SI' ? 'Sobrevive' : 'No sobrevive'}</small></div>
+              <div className="ia-metric"><span>Estimación del juego (ingresada)</span><strong style={{ color: '#7dd3fc' }}>{simulacion.probabilidad_oficial}%</strong><small>Referencia: {simulacion.vive_oficial === 'SI' ? 'Sobrevive' : 'No sobrevive'}</small></div>
+              <div className="ia-metric"><span>Diferencia IA − referencia</span><strong style={{ color: simulacion.diferencia_puntos >= 0 ? '#4ade80' : '#fb7185' }}>{simulacion.diferencia_puntos > 0 ? '+' : ''}{simulacion.diferencia_puntos} puntos</strong></div>
+              <div className="ia-metric"><span>Historial del hámster</span><strong>{simulacion.hamster_con_historial ? 'Disponible' : 'Sin historial'}</strong><small>Racha previa de derrotas: {simulacion.racha_actual ?? 0}</small></div>
+            </div>
+            <p style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5, marginBottom: 0 }}>Esta estimación no garantiza el resultado. La «referencia del juego» es el porcentaje calculado o suministrado por tu frontend; no ha sido consultado directamente a RollerCoin.</p>
+          </section>
+        )}
 
         {/* 2. SECCIÓN: EXPEDICIONES ACTIVAS */}
         <div style={{ marginTop: '30px' }}>
@@ -575,20 +872,21 @@ export default function App() {
               {activas.map(activa => (
                 <div key={activa.id} style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', maxWidth: '300px' }}>
                   <RollerCard 
-                    mapa={MAPAS_OFICIALES.find(m => m.valor === activa.expedicion) || MAPAS_OFICIALES[0]} 
+                    mapa={resolverMapa(activa.expedicion)} 
                     hamsterName={activa.hamster} 
                     stats={activa.stats} 
                     nivel={activa.nivel} 
                     probabilidad={activa.probabilidad_ia}
                     viveIA={activa.vive_ia}
-                    onAction={() => confirmarEliminar(activa.id, activa.hamster)} // Llama al Modal
-                    actionLabel="CANCELAR / BORRAR"
+                    onAction={() => confirmarEliminar(activa.id, activa.hamster)}
+                    disabled={guardando || procesandoId !== null}
+                    actionLabel={procesandoId === activa.id ? 'PROCESANDO...' : 'CANCELAR / BORRAR'}
                     isPreview={false}
                     bonoManual={(HAMSTERS_DEFAULT.find(h => h.nombre === activa.hamster) || HAMSTERS_DEFAULT[0]).bono} 
                   />
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="btn-hover" onClick={() => finalizar(activa.id, true)} style={styles.btnWin}>✅ VIVIÓ</button>
-                    <button className="btn-hover" onClick={() => finalizar(activa.id, false)} style={styles.btnLose}>💀 MURIÓ</button>
+                    <button className="btn-hover" disabled={procesandoId !== null || guardando} onClick={() => finalizar(activa.id, true)} style={{ ...styles.btnWin, opacity: procesandoId !== null ? .6 : 1 }}>✅ VIVIÓ</button>
+                    <button className="btn-hover" disabled={procesandoId !== null || guardando} onClick={() => finalizar(activa.id, false)} style={{ ...styles.btnLose, opacity: procesandoId !== null ? .6 : 1 }}>💀 MURIÓ</button>
                   </div>
                 </div>
               ))}
@@ -598,7 +896,7 @@ export default function App() {
 
         {/* 3. SECCIÓN: HISTORIAL DE RESULTADOS */}
         <div style={{ marginTop: '30px' }}>
-          <h3 style={{...styles.label, marginBottom: '15px', color: '#fff', fontSize: '13px'}}>📜 HISTORIAL DE RESULTADOS</h3>
+          <h3 style={{...styles.label, marginBottom: '15px', color: '#fff', fontSize: '13px'}}>📜 HISTORIAL DE RESULTADOS (ÚLTIMOS 50)</h3>
           {historial.length === 0 ? (
             <p style={{color: '#94a3b8', textAlign: 'center', marginTop: '20px'}}>No hay registros en el historial.</p>
           ) : (
@@ -617,7 +915,7 @@ export default function App() {
                       <div style={{ color: '#cbd5e1', fontSize: '12px', marginTop: '3px' }}>Nivel: {item.nivel || '?'} | Stats: {item.stats}</div>
                    </div>
                    <div style={{ textAlign: 'right' }}>
-                      {item.probabilidad_ia ? (
+                      {item.probabilidad_ia !== null && item.probabilidad_ia !== undefined ? (
                         <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase' }}>
                           IA Dijo: <strong style={{color: item.vive_ia === 'SI' ? '#4ade80' : '#f87171'}}>{item.vive_ia === 'SI' ? 'VIVIRÁ' : 'MORIRÁ'} ({item.probabilidad_ia}%)</strong>
                         </div>
