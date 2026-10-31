@@ -188,7 +188,7 @@ function SelectorMapa({ valorActual, onSelect }) {
 
 function RollerCard({ mapa, hamsterName, stats, nivel, probabilidad, viveIA, onAction, actionLabel, isPreview, bonoManual, disabled = false }) {
   const hamsterObj = HAMSTERS_DEFAULT.find(h => h.nombre === hamsterName) || HAMSTERS_DEFAULT[0];
-  const colorBoton = isPreview ? '#345b99' : '#283e5a';
+  const colorBoton = isPreview ? 'linear-gradient(180deg,#048ddb,#0866ab)' : 'linear-gradient(180deg,#174979,#0d365d)';
   const imagenCalculada = isPreview || hamsterName ? getImagenEvolucion(hamsterObj.slug, nivel) : '';
   const bonoAMostrar = bonoManual !== undefined ? bonoManual : hamsterObj.bono;
   const tienePrediccion = probabilidad !== null && probabilidad !== undefined && probabilidad !== '' && Number.isFinite(Number(probabilidad));
@@ -829,6 +829,177 @@ export default function App() {
       .stats-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
     }
     @media (prefers-reduced-motion: reduce) { *, *:before, *:after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+
+    /* ===========================================================
+       ROLLERCOIN NEON AZUL — Diseño aprobado, sin tonos morados.
+       Cian para interfaz; verde / rojo solo para los resultados.
+       =========================================================== */
+    html { scroll-behavior: smooth; }
+    :root { --rc-cyan:#15cbff; --rc-cyan-soft:#7be9ff; --rc-green:#38ef91; --rc-red:#ff6374; --rc-navy:#050d1c; }
+    body { background:#050b17; }
+    .rc-header { background:linear-gradient(180deg,rgba(10,32,59,.78),rgba(5,15,33,.38)); border:1px solid #154164; border-top:0; border-radius:0 0 16px 16px; padding:16px 24px; margin-bottom:22px; box-shadow:0 8px 25px rgba(0,0,0,.18); }
+    .rc-brand { gap:12px; }
+    .rc-brand-mark { width:50px; height:50px; border:1px solid #0d6090; background:#06203a; border-radius:11px; box-shadow:inset 0 0 15px #0b3552; }
+    .rc-brand-mark img { width:49px; height:49px; object-fit:contain; }
+    .rc-brand-copy h1 { font-size:clamp(22px,2.5vw,31px); letter-spacing:-.04em; margin:0 0 3px; color:#f4faff; }
+    .rc-brand-copy p { color:#98b9d2; font-size:11px; }
+    .rc-heading-dot { color:var(--rc-cyan); text-shadow:0 0 18px rgba(21,203,255,.35); }
+    .rc-version { font-size:10px; color:#abedff; margin-left:10px; vertical-align:middle; border:1px solid #2489b3; background:#0b3751; border-radius:18px; padding:4px 7px; letter-spacing:0; }
+    .rc-nav { display:flex; align-items:center; justify-content:center; gap:5px; flex:1; }
+    .rc-nav a { color:#c3d7e7; text-decoration:none; font-size:12px; font-weight:700; border:1px solid transparent; border-radius:8px; padding:10px 12px; white-space:nowrap; transition:.18s; }
+    .rc-nav a:hover, .rc-nav a:focus-visible { color:#f6fcff; background:#103657; border-color:#298dc5; box-shadow:0 0 15px rgba(14,160,255,.22); }
+    .rc-nav a:first-child { background:#10314e; color:#e5f8ff; border-color:#2598e7; box-shadow:0 0 12px rgba(0,155,255,.22); }
+    .rc-header-actions { gap:8px; }
+    .rc-status { color:#96e8ce; background:#073027; border-color:#167a68; font-size:10px; padding:9px; }
+    .rc-status-dot { background:var(--rc-green); box-shadow:0 0 8px rgba(56,239,145,.65); }
+    .rc-refresh { border:1px solid #167bc1; background:#092e50; font-size:19px; color:#ccefff; padding:7px 12px; box-shadow:0 0 10px rgba(22,153,255,.16); }
+    .rc-eyebrow { color:#6eafd0; font-size:10px; font-weight:800; letter-spacing:.13em; }
+    .rc-section-heading h2, .rc-panel-heading h2, .rc-prediction-head h2 { color:#f6faff; font-size:19px; font-weight:850; letter-spacing:-.025em; }
+    .rc-title-icon { display:inline-flex; justify-content:center; width:25px; color:#3fe0ff; margin-right:7px; font-size:22px; text-shadow:0 0 12px rgba(13,190,255,.36); }
+    .rc-section-aside { color:#98b7cc; }
+
+    /* Five clear KPIs, independent illuminated edges */
+    .rc-overview { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:13px; background:transparent; border:0; overflow:visible; margin-bottom:20px; box-shadow:none; }
+    .rc-stat { border:1px solid #0d9fec !important; border-radius:10px; background:linear-gradient(160deg,#091f3b,#071528 82%); padding:17px 17px 15px; min-height:109px; box-shadow:0 0 12px rgba(0,157,246,.22),inset 0 0 14px rgba(1,122,232,.09); overflow:hidden; }
+    .rc-stat + .rc-stat { border-left:1px solid #0d9fec; }
+    .rc-stat:before { content:''; position:absolute; right:-14px; bottom:-38px; width:85px; height:85px; border-radius:50%; background:rgba(11,175,255,.09); filter:blur(22px); pointer-events:none; }
+    .rc-stat-label { color:#c4d8e7; text-transform:uppercase; font-size:10px; font-weight:850; letter-spacing:.045em; margin-bottom:7px; }
+    .rc-stat-number { font-size:clamp(28px,2.5vw,36px); font-weight:900; color:#f8fcff; line-height:1.05; text-shadow:0 0 13px rgba(255,255,255,.06); }
+    .rc-stat-meta { font-size:10px; color:#a8c2d5; }
+    .rc-stat-positive { border-color:#1fe77f !important; background:linear-gradient(145deg,#0b3026,#061a24); box-shadow:0 0 12px rgba(30,245,137,.24),inset 0 0 14px rgba(17,235,130,.07); }
+    .rc-stat-positive .rc-stat-number { color:#4cff9a; }
+    .rc-stat-negative { border-color:#ff5f70 !important; background:linear-gradient(145deg,#34202c,#15131e); box-shadow:0 0 12px rgba(255,77,101,.2),inset 0 0 14px rgba(255,77,101,.07); }
+    .rc-stat-negative .rc-stat-number { color:#ff8291; }
+    .rc-stat-cyan .rc-stat-number { color:#54ddff; }
+    .rc-stat-cyan:after { display:none; }
+    .rc-stat-fail { border-color:#ffac45 !important; background:linear-gradient(145deg,#302719,#171d22); box-shadow:0 0 12px rgba(255,166,65,.17); }
+    .rc-stat-fail .rc-stat-number { color:#ffc572; }
+
+    /* Model quality: tidy 4 data cards rather than text-heavy panel */
+    .rc-model-panel { background:linear-gradient(160deg,#071931,#071224); border:1px solid #16b7f3; border-radius:12px; box-shadow:0 0 16px rgba(0,160,255,.16),inset 0 0 18px rgba(16,93,148,.08); margin-bottom:26px; }
+    .rc-panel-heading { padding:19px 22px 16px; border-bottom:1px solid #174668; }
+    .rc-panel-heading h2 { margin-top:5px; }
+    .rc-panel-heading p { color:#a8c4dc; margin-top:5px; }
+    .rc-panel-tag { background:#0a3340; border-color:#178f98; color:#a2f6e0; font-weight:800; }
+    .rc-eval-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; padding:19px 22px; }
+    .rc-eval-card { background:linear-gradient(145deg,#0b2943,#081c31); border:1px solid #268fbe; border-radius:9px; padding:16px 17px; min-width:0; box-shadow:inset 0 0 12px rgba(0,146,255,.06),0 0 9px rgba(0,166,255,.12); display:flex; flex-direction:column; gap:8px; }
+    .rc-eval-label { color:#cee4f2; font-size:11px; font-weight:750; }
+    .rc-eval-card strong { color:#5adfff; font-size:clamp(21px,2.3vw,32px); font-weight:900; letter-spacing:-.035em; line-height:1.1; font-variant-numeric:tabular-nums; }
+    .rc-eval-card small { font-size:9px; color:#8fb4cd; margin-top:auto; }
+    .rc-eval-featured { border-color:#20e77c; background:linear-gradient(140deg,#0d3e2b,#09212c); box-shadow:0 0 12px rgba(31,232,125,.18); }
+    .rc-eval-featured strong { color:#4cf68b; }
+    .rc-eval-card .rc-track { margin-top:auto; background:#25435a; height:5px; }
+    .rc-fill-base { background:#48b5e9; }
+    .rc-fill-ia { background:#36ecaa; }
+    .rc-model-footer { display:flex; flex-wrap:wrap; gap:10px 22px; background:transparent; border-top:1px solid #144467; padding:10px 22px; color:#a8c5d9; }
+    .rc-model-footer b { color:#e5f9ff; font-weight:800; }
+    .rc-model-footer span:before { content:none!important; }
+    .rc-model-note { color:#a5c1d4; background:#092741; border:1px solid #1e688e; border-radius:7px; font-size:10px; line-height:1.6; padding:11px 14px; margin:0 22px 18px; }
+
+    /* Character roster: individual readable statuses */
+    .rc-roster-scroll { gap:12px; }
+    .rc-hamster-card { width:169px; min-width:169px; border-color:#238eb5; border-radius:10px; background:linear-gradient(160deg,#0a2639,#07172a); box-shadow:inset 0 0 12px rgba(7,140,202,.06),0 0 9px rgba(7,169,241,.11); text-align:center; padding:12px; }
+    .rc-hamster-card:hover { border-color:#39d7ff; box-shadow:0 0 18px rgba(37,192,255,.27); transform:translateY(-3px); }
+    .rc-hamster-good { border-color:#23cc7d; box-shadow:0 0 10px rgba(23,238,119,.14); }
+    .rc-hamster-medium { border-color:#dbac3c; box-shadow:0 0 8px rgba(237,170,49,.13); }
+    .rc-hamster-low { border-color:#ec6370; box-shadow:0 0 10px rgba(240,79,100,.15); }
+    .rc-hamster-top { align-items:center; }
+    .rc-hamster-avatar { height:58px; width:58px; background:transparent; border:0; }
+    .rc-hamster-avatar img { height:58px; width:58px; }
+    .rc-hamster-total { color:#90aec7; }
+    .rc-hamster-name { color:#fff; margin-top:7px; font-size:12px; font-weight:850; }
+    .rc-hamster-win { justify-content:center; gap:5px; margin:8px 0; }
+    .rc-hamster-win strong { font-size:25px; font-weight:900; color:#effaff; }
+    .rc-hamster-good .rc-hamster-win strong { color:#56fa9e; }
+    .rc-hamster-low .rc-hamster-win strong { color:#ff8794; }
+    .rc-hamster-medium .rc-hamster-win strong { color:#f8ce66; }
+    .rc-hamster-stats { color:#afc6d9; }
+    .rc-hamster-streak { color:#d2e7f2; border-top-color:#2c516b; font-size:9px; }
+    .rc-hamster-good .rc-track-fill { background:#4cf6a0; }
+    .rc-hamster-medium .rc-track-fill { background:#f3c45b; }
+    .rc-hamster-low .rc-track-fill { background:#ff727e; }
+
+    /* Launch & game map card */
+    .rc-launch-shell { margin-top:18px; margin-bottom:22px; }
+    .form-grid { grid-template-columns:minmax(0,1fr) minmax(280px,.9fr); gap:23px; }
+    .rc-launch-heading { margin-bottom:12px; }
+    .premium-input:focus-within { border-color:var(--rc-cyan)!important; box-shadow:0 0 0 2px rgba(21,203,255,.18),0 0 12px rgba(21,203,255,.12)!important; }
+    .rc-predict-btn { color:#001b2e; background:linear-gradient(180deg,#38d9ff,#0ba8ed); border:1px solid #83ebff; box-shadow:0 0 14px rgba(16,189,255,.30),inset 0 1px rgba(255,255,255,.45); font-size:12px; font-weight:900; text-transform:uppercase; justify-content:center; letter-spacing:.03em; }
+    .rc-predict-btn:hover:not(:disabled) { background:linear-gradient(#75e8ff,#12b7f3); box-shadow:0 0 20px rgba(16,189,255,.46); }
+    .card-container .card-hover { box-shadow:0 0 18px rgba(0,164,249,.10); }
+    .card-container .card-hover:hover { border-color:#35c8fc!important; }
+    .rc-prediction { margin-top:20px; background:linear-gradient(145deg,#0b2339,#071726); border-color:#10bfff; box-shadow:0 0 18px rgba(1,165,246,.18); }
+    .rc-prediction-head { background:#0c2c48; border-bottom-color:#186b97; }
+    .rc-prediction-grid { align-items:stretch; }
+    .rc-primary-prob { background:linear-gradient(145deg,#0b422d,#092c34); }
+    .rc-primary-label { color:#a3efda; }
+    .rc-primary-value { color:#4ffa9c; text-shadow:0 0 22px rgba(62,250,156,.2); font-weight:950; }
+    .rc-primary-caption { color:#9fcbbd; }
+    .rc-prediction-bars { background:#091f33; }
+    .rc-prediction-row strong { color:#6cdbff; }
+    .rc-prediction-diff { background:#123e41; border-color:#1ab8a5; }
+    .rc-prediction-diff strong { color:#5cf0ae; }
+    .rc-prediction-footer { color:#b0cbdc; background:#07182a; }
+
+    /* Active expeditions: compact, not giant vertically stacked cards */
+    .rc-active-section { margin:20px 0 27px; }
+    .rc-active-list { display:grid; grid-template-columns:1fr; gap:9px; }
+    .rc-active-entry { min-width:0; border:1px solid #28699d; border-radius:9px; background:linear-gradient(110deg,#0c2037,#0a192d); display:grid; grid-template-columns:minmax(134px,1.05fr) minmax(140px,1.15fr) 100px auto; gap:13px; align-items:center; padding:9px 12px; box-shadow:inset 0 0 12px rgba(0,130,220,.06); }
+    .rc-active-map { height:59px; border-radius:6px; background-position:center; background-size:cover; display:flex; align-items:end; padding:8px 10px; overflow:hidden; }
+    .rc-active-map span { font-size:12px; font-weight:900; color:#fff; text-shadow:0 1px 5px #000; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; }
+    .rc-active-identity { display:flex; align-items:center; min-width:0; gap:8px; }
+    .rc-active-identity img { width:43px; height:43px; object-fit:contain; }
+    .rc-active-identity div { display:flex; flex-direction:column; gap:3px; min-width:0; }
+    .rc-active-identity strong { font-size:12px; font-weight:800; color:#eef8ff; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    .rc-active-identity small { font-size:10px; color:#8fb3ca; }
+    .rc-active-pred { display:flex; flex-direction:column; gap:4px; align-items:center; }
+    .rc-active-pred span { font-size:9px; color:#87abc8; text-transform:uppercase; }
+    .rc-active-pred strong { color:#56e4ff; font-size:16px; font-weight:900; }
+    .rc-active-actions { display:flex; gap:7px; }
+    .rc-result-button { background:#075a35; border-color:#1ee283; color:#ddffee; border-radius:6px; padding:10px 11px; font-size:11px; font-weight:850; box-shadow:0 0 10px rgba(19,232,118,.16); white-space:nowrap; }
+    .rc-result-lose { background:#752531; border-color:#ff6176; color:#ffe1e5; box-shadow:0 0 10px rgba(255,64,90,.16); }
+    .rc-active-delete { background:#12263d; border:1px solid #53728e; color:#c4dded; border-radius:6px; cursor:pointer; font-size:19px; min-width:35px; }
+    .rc-active-delete:hover { border-color:#ff7989; color:#ff9fab; }
+    .rc-empty { border:1px dashed #26658b; color:#9cbdcf; padding:26px; text-align:center; border-radius:9px; }
+    .rc-count { background:#0c3f62; border-color:#1489c5; color:#87e3ff; }
+    .historial-item { background:#0a1a2b; border:1px solid #214b70; border-radius:7px; box-shadow:inset 0 0 10px rgba(13,104,199,.035); }
+    .rc-history-win { border-left:3px solid #31f08a; }
+    .rc-history-lose { border-left:3px solid #ff6574; }
+    .rc-notice { background:#0c322a; border-color:#20a576; color:#bdf6e0; }
+    .rc-notice-error { background:#2e1624; border-color:#de5269; color:#ffbcc7; }
+    .modal-content { background:#0b2339; border-color:#2ab8fa; box-shadow:0 0 40px rgba(5,150,241,.16); }
+    .btn-confirm-send { background:#17bde9; border-color:#7ce8ff; color:#072033; }
+
+    @media (max-width:1120px) { .rc-nav a { padding:8px 7px; font-size:11px; } .rc-eval-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:850px) { .rc-header { flex-wrap:wrap; } .rc-nav { order:3; flex:0 0 100%; justify-content:flex-start; overflow-x:auto; } .rc-header-actions { margin-left:auto; } .rc-overview { grid-template-columns:repeat(3,minmax(0,1fr)); } .rc-active-entry { grid-template-columns:1fr 1fr; } .rc-active-actions { justify-content:flex-end; } }
+    @media (max-width:620px) { .rc-header { padding:15px; } .rc-nav a { font-size:10px; } .rc-overview { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; } .rc-stat { padding:12px; min-height:94px; } .rc-stat-label { font-size:9px; } .rc-stat-number { font-size:27px; } .rc-eval-grid { grid-template-columns:repeat(2,minmax(0,1fr)); padding:13px; gap:9px; } .rc-eval-card { padding:12px; } .rc-eval-label { font-size:10px; } .rc-eval-card strong { font-size:23px; } .rc-panel-heading { padding:14px; } .rc-model-footer { padding:12px 14px; } .rc-model-note { margin:0 13px 14px; } .rc-hamster-card { width:148px; min-width:148px; } .rc-active-entry { grid-template-columns:1fr; gap:9px; } .rc-active-actions { justify-content:flex-start; } .rc-active-pred { align-items:start; } .rc-active-map { height:74px; } }
+
+    /* Three-panel launcher, as in the approved reference */
+    .form-grid { grid-template-columns:minmax(290px,1.15fr) minmax(245px,.82fr) minmax(280px,1fr); gap:16px; padding:20px!important; align-items:stretch; }
+    .card-container { align-self:stretch; align-items:start; }
+    .card-container .card-hover { width:100%!important; max-width:none; height:100%; display:flex; flex-direction:column; }
+    .card-container .card-hover button { margin-top:auto; }
+    .rc-prediction-slot { min-width:0; }
+    .rc-prediction-slot .rc-prediction { margin:0; min-height:100%; display:flex; flex-direction:column; }
+    .rc-prediction-slot .rc-prediction-head { padding:15px; }
+    .rc-prediction-slot .rc-prediction-head h2 { font-size:16px; }
+    .rc-prediction-slot .rc-prediction-outcome { padding:6px 9px; font-size:10px; }
+    .rc-prediction-slot .rc-prediction-grid { grid-template-columns:1fr; }
+    .rc-prediction-slot .rc-primary-prob { border-right:0; border-bottom:1px solid #216482; padding:16px; }
+    .rc-prediction-slot .rc-primary-value { font-size:clamp(36px,3.5vw,54px); margin:4px 0; }
+    .rc-prediction-slot .rc-prediction-bars { padding:15px; }
+    .rc-prediction-slot .rc-prediction-row { margin-bottom:14px; }
+    .rc-prediction-slot .rc-prediction-diff { padding:9px 10px; margin-top:13px; }
+    .rc-prediction-slot .rc-prediction-diff strong { font-size:17px; }
+    .rc-prediction-slot .rc-prediction-footer { margin-top:auto; padding:10px 14px; font-size:9px; }
+    .rc-prediction-pending { border-style:dashed; box-shadow:none; }
+    .rc-pending-inner { display:flex; flex:1; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:22px 17px; gap:13px; }
+    .rc-pending-icon { color:#3ad9ff; font-size:46px; text-shadow:0 0 17px rgba(40,192,255,.4); }
+    .rc-pending-inner strong { color:#e0f6ff; font-size:17px; }
+    .rc-pending-inner p { color:#9fbdd2; margin:0; font-size:12px; line-height:1.55; }
+    .rc-pending-inner span { color:#7bacc5; font-size:10px; line-height:1.5; }
+    @media(max-width:1080px) { .form-grid { grid-template-columns:minmax(0,1fr) minmax(245px,1fr); } .rc-prediction-slot { grid-column:1/-1; } .rc-prediction-slot .rc-prediction-grid { grid-template-columns:1fr 1fr; } .rc-prediction-slot .rc-primary-prob { border-bottom:0; border-right:1px solid #216482; } }
+    @media(max-width:680px) { .form-grid { grid-template-columns:1fr; padding:15px!important; } .rc-prediction-slot { grid-column:auto; } .rc-prediction-slot .rc-prediction-grid { grid-template-columns:1fr; } .rc-prediction-slot .rc-primary-prob { border-right:0; border-bottom:1px solid #216482; } }
   `;
   return (
     <div style={styles.page}>
@@ -857,18 +1028,23 @@ export default function App() {
       )}
 
       <div style={styles.container}>
-        <header className="rc-header">
+        <header className="rc-header" id="dashboard">
           <div className="rc-brand">
-            <div className="rc-brand-mark" aria-hidden="true">R<span>C</span></div>
+            <div className="rc-brand-mark" aria-hidden="true"><img src={HAMSTERS_DEFAULT[0].img} alt="" /></div>
             <div className="rc-brand-copy">
-              <div className="rc-eyebrow">ROLLERCOIN · EXPEDITIONS</div>
-              <h1>Expedition Control<span className="rc-heading-dot">.</span></h1>
-              <p>Simulaciones, rendimiento e historial en un solo lugar.</p>
+              <h1>RollerCoin <span className="rc-heading-dot">AI</span><span className="rc-version">v2.0</span></h1>
+              <p>Sistema de predicción de expediciones</p>
             </div>
           </div>
+          <nav className="rc-nav" aria-label="Secciones del panel">
+            <a href="#dashboard">Dashboard</a>
+            <a href="#simulacion">Simulación</a>
+            <a href="#expediciones">Expediciones</a>
+            <a href="#analisis">Análisis IA</a>
+          </nav>
           <div className="rc-header-actions">
-            <div className="rc-status"><span className="rc-status-dot" />{estadoModelo === 'entrenado' ? 'Modelo disponible' : estadoModelo ? `Modelo: ${estadoModelo}` : 'Comprobando modelo'}</div>
-            <button type="button" className="rc-refresh" onClick={cargarDashboard} title="Actualizar estadísticas">↻ <span>Actualizar</span></button>
+            <div className="rc-status"><span className="rc-status-dot" />{estadoModelo === 'entrenado' ? 'IA activa' : estadoModelo ? `IA: ${estadoModelo}` : 'Conectando'}</div>
+            <button type="button" className="rc-refresh" onClick={cargarDashboard} title="Actualizar estadísticas">↻</button>
           </div>
         </header>
 
@@ -878,7 +1054,7 @@ export default function App() {
         {/* PANORAMA: métricas históricas */}
         {metricas && (
           <section className="rc-overview" aria-label="Resumen de expediciones">
-            <div className="rc-stat">
+            <div className="rc-stat rc-stat-total">
               <span className="rc-stat-label">Expediciones</span>
               <strong className="rc-stat-number">{metricas.total_partidas}</strong>
               <span className="rc-stat-meta">Registros finalizados</span>
@@ -898,7 +1074,7 @@ export default function App() {
               <strong className="rc-stat-number">{metricas.ia_aciertos}</strong>
               <span className="rc-stat-meta">{metricas.ia_exactitud_porc ?? metricas.ia_precision_porc}% en registros evaluados</span>
             </div>
-            <div className="rc-stat">
+            <div className="rc-stat rc-stat-fail">
               <span className="rc-stat-label">Fallos de IA</span>
               <strong className="rc-stat-number">{metricas.ia_fallos}</strong>
               <span className="rc-stat-meta">{metricas.ia_predicciones_evaluadas ?? (metricas.ia_aciertos + metricas.ia_fallos)} predicciones guardadas</span>
@@ -906,46 +1082,46 @@ export default function App() {
           </section>
         )}
 
-        {/* Evaluación cronológica, distinta de los registros guardados */}
-        <section className="rc-model-panel" aria-label="Rendimiento del modelo">
+        {/* Evaluación del modelo: nunca se mezclan los aciertos guardados con la prueba cronológica. */}
+        <section className="rc-model-panel" aria-label="Rendimiento del modelo" id="analisis">
           <div className="rc-panel-heading">
             <div>
-              <div className="rc-eyebrow">ANÁLISIS DEL MODELO <span className="rc-bullet">/</span> RANDOM FOREST</div>
-              <h2>¿Qué tan precisa es la IA?</h2>
-              <p>Comparación con expediciones que el modelo no utilizó para entrenar.</p>
+              <div className="rc-eyebrow">ANÁLISIS CON EXPEDICIONES NO VISTAS</div>
+              <h2><span className="rc-title-icon" aria-hidden="true">▣</span> Evaluación real de la IA v2</h2>
+              <p>Resultados de Random Forest frente a la estimación calculada por tu página.</p>
             </div>
-            <span className="rc-panel-tag">{estadoModelo === 'entrenado' ? 'Entrenado' : estadoModelo || 'Sin verificar'}</span>
+            <span className="rc-panel-tag">{estadoModelo === 'entrenado' ? 'Modelo entrenado' : estadoModelo || 'Verificando'}</span>
           </div>
           {evaluacionModelo ? (
             <>
-              <div className="rc-model-grid">
-                <div className="rc-model-comparison">
-                  <div className="rc-comparison-kicker"><span className="rc-kicker-line"/> RESULTADOS EN DATOS DE PRUEBA</div>
-                  <div className="rc-model-item rc-model-item-featured">
-                    <div className="rc-model-item-top"><span>Exactitud de la IA</span><strong>{evaluacionModelo.exactitud_ia_porc}%</strong></div>
-                    <div className="rc-track"><div className="rc-track-fill rc-fill-ia" style={{width: `${Math.max(0, Math.min(100, Number(evaluacionModelo.exactitud_ia_porc) || 0))}%`}} /></div>
-                  </div>
-                  <div className="rc-model-item">
-                    <div className="rc-model-item-top"><span>Exactitud de la estimación base</span><strong>{evaluacionModelo.exactitud_oficial_porc}%</strong></div>
-                    <div className="rc-track"><div className="rc-track-fill rc-fill-base" style={{width: `${Math.max(0, Math.min(100, Number(evaluacionModelo.exactitud_oficial_porc) || 0))}%`}} /></div>
-                  </div>
-                  <div className="rc-model-source"><strong>Referencia estimada.</strong> El porcentaje base se calcula en tu página; no procede directamente de RollerCoin.</div>
+              <div className="rc-eval-grid">
+                <div className="rc-eval-card rc-eval-featured">
+                  <span className="rc-eval-label">Exactitud IA · prueba</span>
+                  <strong>{evaluacionModelo.exactitud_ia_porc}%</strong>
+                  <div className="rc-track"><div className="rc-track-fill rc-fill-ia" style={{width: `${Math.max(0, Math.min(100, Number(evaluacionModelo.exactitud_ia_porc) || 0))}%`}} /></div>
                 </div>
-                <div className="rc-model-side">
-                  <div className="rc-side-title">Error de probabilidad <span>Brier Score · mientras más bajo, mejor</span></div>
-                  <div className="rc-brier-row"><span>Brier · IA</span><strong>{evaluacionModelo.brier_ia}</strong></div>
-                  <div className="rc-brier-row"><span>Brier · Referencia</span><strong>{evaluacionModelo.brier_oficial}</strong></div>
-                  <div className="rc-training-meta">
-                    <div><strong>{evaluacionModelo.expediciones_entrenamiento}</strong><span>Entrenamiento</span></div>
-                    <div><strong>{evaluacionModelo.expediciones_prueba}</strong><span>Prueba temporal</span></div>
-                  </div>
+                <div className="rc-eval-card">
+                  <span className="rc-eval-label">Exactitud de la referencia</span>
+                  <strong>{evaluacionModelo.exactitud_oficial_porc}%</strong>
+                  <div className="rc-track"><div className="rc-track-fill rc-fill-base" style={{width: `${Math.max(0, Math.min(100, Number(evaluacionModelo.exactitud_oficial_porc) || 0))}%`}} /></div>
+                </div>
+                <div className="rc-eval-card">
+                  <span className="rc-eval-label">Brier Score · IA</span>
+                  <strong>{evaluacionModelo.brier_ia}</strong>
+                  <small>Menor valor = mejor probabilidad</small>
+                </div>
+                <div className="rc-eval-card">
+                  <span className="rc-eval-label">Brier Score · referencia</span>
+                  <strong>{evaluacionModelo.brier_oficial}</strong>
+                  <small>Referencia estimada por la página</small>
                 </div>
               </div>
               <div className="rc-model-footer">
-                <span>{expedicionesEntrenables} expediciones entrenables</span>
-                <span>Una diferencia pequeña de exactitud no demuestra superioridad estadística.</span>
-                {metricas && <span>{metricas.ia_predicciones_evaluadas ?? 0} predicciones registradas evaluadas por separado.</span>}
+                <span><b>{evaluacionModelo.expediciones_entrenamiento}</b> para entrenamiento</span>
+                <span><b>{evaluacionModelo.expediciones_prueba}</b> para prueba cronológica</span>
+                <span><b>{expedicionesEntrenables}</b> expediciones entrenables</span>
               </div>
+              <p className="rc-model-note">La referencia proviene de una fórmula local, no de una lectura oficial directa de RollerCoin. Una pequeña diferencia entre exactitudes no garantiza que la IA sea superior.</p>
             </>
           ) : (
             <div className="rc-model-empty">{estadoModelo ? 'La evaluación temporal todavía no está disponible.' : 'Consultando los resultados del modelo…'}</div>
@@ -964,13 +1140,13 @@ export default function App() {
                 const hInfo = HAMSTERS_DEFAULT.find(x => x.nombre === h.hamster) || HAMSTERS_DEFAULT[0];
                 const winrate = Math.max(0, Math.min(100, Number(h.winrate) || 0));
                 return (
-                  <button type="button" key={h.hamster} className="rc-hamster-card" onClick={() => recalcularTodo(h.hamster, form.nivel || 1, form.expedicion, undefined, true)} title={`Preparar expedición con ${h.hamster}`}>
+                  <button type="button" key={h.hamster} className={`rc-hamster-card ${winrate >= 60 ? 'rc-hamster-good' : winrate >= 45 ? 'rc-hamster-medium' : 'rc-hamster-low'}`} onClick={() => recalcularTodo(h.hamster, form.nivel || 1, form.expedicion, undefined, true)} title={`Preparar expedición con ${h.hamster}`} >
                     <div className="rc-hamster-top"><span className="rc-hamster-avatar"><img src={hInfo.img} alt="" loading="lazy" /></span><span className="rc-hamster-total">{h.total} envíos</span></div>
                     <div className="rc-hamster-name" title={h.hamster}>{h.hamster}</div>
                     <div className="rc-hamster-win"><strong>{h.winrate}%</strong><span>victorias</span></div>
                     <div className="rc-track rc-track-small"><div className="rc-track-fill rc-fill-win" style={{width:`${winrate}%`}} /></div>
                     <div className="rc-hamster-stats"><span><i className="rc-dot-green" /> {h.victorias} vivieron</span><span>{h.derrotas} murieron</span></div>
-                    <div className="rc-hamster-streak">Racha: {h.racha_conteo} {h.racha_tipo === 'VIVIÓ' ? 'victorias' : 'derrotas'}</div>
+                    <div className="rc-hamster-streak">{h.racha_tipo === 'VIVIÓ' ? '✓' : '•'} Racha de {h.racha_conteo} {h.racha_tipo === 'VIVIÓ' ? 'victorias' : 'derrotas'}</div>
                   </button>
                 );
               })}
@@ -979,9 +1155,9 @@ export default function App() {
         )}
 
         {/* 1. SECCIÓN: FORMULARIO Y PREDICCIÓN */}
-        <div className="rc-launch-shell">
+        <div className="rc-launch-shell" id="simulacion">
           <div className="rc-section-heading rc-launch-heading">
-            <div><div className="rc-eyebrow">CONFIGURACIÓN</div><h2>Nueva expedición</h2></div>
+            <div><div className="rc-eyebrow">CONFIGURA TU LANZAMIENTO</div><h2><span className="rc-title-icon" aria-hidden="true">↗</span> Datos de lanzamiento</h2></div>
             <span className="rc-section-aside">Selecciona un hámster y calcula su probabilidad</span>
           </div>
           <div className="form-grid" style={styles.contenedorFormulario}>
@@ -1029,14 +1205,12 @@ export default function App() {
               bonoManual={form.bono} 
             />
           </div>
-        </div>
-        </div>
-
+          <div className="rc-prediction-slot">
         {/* Resultado de la simulación */}
-        {simulacion && (
+        {simulacion ? (
           <section className="rc-prediction" aria-label="Resultado de la predicción">
             <div className="rc-prediction-head">
-              <div><div className="rc-eyebrow">SIMULACIÓN FINALIZADA</div><h2>Pronóstico de supervivencia</h2></div>
+              <div><div className="rc-eyebrow">PREDICCIÓN RANDOM FOREST</div><h2><span className="rc-title-icon" aria-hidden="true">◉</span> Resultado de la predicción</h2></div>
               <span className={`rc-prediction-outcome ${simulacion.vive_ia === 'SI' ? 'is-positive' : 'is-negative'}`}>{simulacion.vive_ia === 'SI' ? 'Supervivencia prevista' : 'Riesgo de derrota'}</span>
             </div>
             <div className="rc-prediction-grid">
@@ -1063,43 +1237,59 @@ export default function App() {
               <span>Son estimaciones estadísticas, no resultados garantizados.</span>
             </div>
           </section>
+        ) : (
+          <section className="rc-prediction rc-prediction-pending">
+            <div className="rc-prediction-head"><div><div className="rc-eyebrow">RANDOM FOREST · IA V2</div><h2>Resultado de la predicción</h2></div></div>
+            <div className="rc-pending-inner">
+              <div className="rc-pending-icon" aria-hidden="true">◎</div>
+              <strong>Lista para predecir</strong>
+              <p>Elige un hámster y un mapa, después pulsa «Predecir supervivencia».</p>
+              <span>La IA comparará la probabilidad calculada con tu estimación base.</span>
+            </div>
+          </section>
         )}
 
+          </div>
+        </div>
+        </div>
+
+        {/* Resultado de la simulación ahora se muestra junto al mapa */}
         {/* 2. SECCIÓN: EXPEDICIONES ACTIVAS */}
-        <div style={{ marginTop: '30px' }}>
-          <div className="rc-section-heading"><div><div className="rc-eyebrow">SEGUIMIENTO</div><h2>Expediciones activas <span className="rc-count">{activas.length}</span></h2></div></div>
+        <section className="rc-active-section" id="expediciones">
+          <div className="rc-section-heading"><div><div className="rc-eyebrow">EN PROGRESO</div><h2><span className="rc-title-icon" aria-hidden="true">⚒</span> Expediciones activas <span className="rc-count">{activas.length}</span></h2></div></div>
           {activas.length === 0 ? (
-            <p style={{color: '#94a3b8', textAlign: 'center', marginTop: '20px'}}>No hay expediciones activas en este momento.</p>
+            <p className="rc-empty">No hay expediciones activas en este momento.</p>
           ) : (
-            <div style={styles.gridActivas}>
-              {activas.map(activa => (
-                <div key={activa.id} style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', maxWidth: '300px' }}>
-                  <RollerCard 
-                    mapa={resolverMapa(activa.expedicion)} 
-                    hamsterName={activa.hamster} 
-                    stats={activa.stats} 
-                    nivel={activa.nivel} 
-                    probabilidad={activa.probabilidad_ia}
-                    viveIA={activa.vive_ia}
-                    onAction={() => confirmarEliminar(activa.id, activa.hamster)}
-                    disabled={guardando || procesandoId !== null}
-                    actionLabel={procesandoId === activa.id ? 'Procesando...' : 'Cancelar expedición'}
-                    isPreview={false}
-                    bonoManual={(HAMSTERS_DEFAULT.find(h => h.nombre === activa.hamster) || HAMSTERS_DEFAULT[0]).bono} 
-                  />
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="rc-result-button rc-result-win" disabled={procesandoId !== null || guardando} onClick={() => finalizar(activa.id, true)}>Vivió</button>
-                    <button className="rc-result-button rc-result-lose" disabled={procesandoId !== null || guardando} onClick={() => finalizar(activa.id, false)}>Murió</button>
+            <div className="rc-active-list">
+              {activas.map(activa => {
+                const mapa = resolverMapa(activa.expedicion);
+                const hamster = HAMSTERS_DEFAULT.find(h => h.nombre === activa.hamster) || HAMSTERS_DEFAULT[0];
+                const tieneProb = activa.probabilidad_ia !== null && activa.probabilidad_ia !== undefined;
+                return (
+                  <div className="rc-active-entry" key={activa.id}>
+                    <div className="rc-active-map" style={mapa.bg ? {backgroundImage:`linear-gradient(90deg,rgba(3,12,26,.24),rgba(3,12,26,.85)),url(${mapa.bg})`} : {}}>
+                      <span>{mapa.nombre}</span>
+                    </div>
+                    <div className="rc-active-identity">
+                      <img src={hamster.img} alt="" loading="lazy" />
+                      <div><strong>{activa.hamster}</strong><small>Nivel {activa.nivel || 1} · {activa.stats} stats</small></div>
+                    </div>
+                    <div className="rc-active-pred"><span>Predicción IA</span><strong>{tieneProb ? `${activa.probabilidad_ia}%` : 'Sin simular'}</strong></div>
+                    <div className="rc-active-actions">
+                      <button className="rc-result-button rc-result-win" disabled={procesandoId !== null || guardando} onClick={() => finalizar(activa.id, true)}>✓ Vivió</button>
+                      <button className="rc-result-button rc-result-lose" disabled={procesandoId !== null || guardando} onClick={() => finalizar(activa.id, false)}>× Murió</button>
+                      <button className="rc-active-delete" disabled={procesandoId !== null || guardando} onClick={() => confirmarEliminar(activa.id, activa.hamster)} title={`Cancelar expedición de ${activa.hamster}`} aria-label={`Cancelar expedición de ${activa.hamster}`}>⌫</button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
-        </div>
+        </section>
 
         {/* 3. SECCIÓN: HISTORIAL DE RESULTADOS */}
         <div style={{ marginTop: '30px' }}>
-          <div className="rc-section-heading"><div><div className="rc-eyebrow">REGISTROS</div><h2>Historial de resultados</h2></div><span className="rc-section-aside">Últimas 50 expediciones</span></div>
+          <div className="rc-section-heading"><div><div className="rc-eyebrow">RESULTADOS GUARDADOS</div><h2><span className="rc-title-icon" aria-hidden="true">◷</span> Historial reciente</h2></div><span className="rc-section-aside">Últimas 50 expediciones</span></div>
           {historial.length === 0 ? (
             <p style={{color: '#94a3b8', textAlign: 'center', marginTop: '20px'}}>No hay registros en el historial.</p>
           ) : (
@@ -1143,16 +1333,16 @@ export default function App() {
 // ESTILOS INLINE PREMIUM
 // ==========================================
 const styles = {
-  page: { backgroundColor: '#0b1120', minHeight: '100vh', color: '#edf5ff', fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif', padding: '10px 22px 54px' },
-  container: { maxWidth: '1160px', margin: '0 auto' },
+  page: { backgroundColor: '#050b17', minHeight: '100vh', color: '#edf5ff', fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif', padding: '10px 22px 54px' },
+  container: { maxWidth: '1260px', margin: '0 auto' },
   navBar: { display: 'none' },
   controlPanel: { display: 'flex', flexDirection: 'column', gap: '13px' },
-  contenedorFormulario: { background: '#142135', padding: '30px', borderRadius: '12px', border: '1px solid #2b4762', boxSizing: 'border-box' },
+  contenedorFormulario: { background: 'linear-gradient(145deg,#0b2037,#071728)', padding: '30px', borderRadius: '12px', border: '1px solid #19a9e5', boxShadow: '0 0 15px rgba(0,151,242,.16)', boxSizing: 'border-box' },
   label: { display: 'block', color: '#b0c8dc', fontSize: '10px', fontWeight: 760, letterSpacing: '1.12px', textTransform: 'uppercase' },
   input: { width: '100%', backgroundColor: '#0d1828', border: '1px solid #34516c', padding: '12px 13px', borderRadius: '7px', color: '#e1eaf4', fontSize: '13px', outline: 'none', boxSizing: 'border-box', transition: 'border-color .18s, box-shadow .18s' },
   dropdownList: { position: 'absolute', top: '100%', left: 0, right: 0, background: '#18283b', border: '1px solid #42627f', borderRadius: '8px', maxHeight: '240px', overflowY: 'auto', zIndex: 100, marginTop: '5px', boxShadow: '0 14px 30px rgba(0,0,0,.4)' },
   dropdownItem: { padding: '11px 13px', color: '#dce8f1', cursor: 'pointer', borderBottom: '1px solid #263441', fontSize: '12px' },
-  rcCard: { position: 'relative', background: '#18283b', width: '300px', borderRadius: '10px', padding: '11px', border: '1px solid #35506c', boxSizing: 'border-box' },
+  rcCard: { position: 'relative', background: '#0b1f37', width: '300px', borderRadius: '10px', padding: '11px', border: '1px solid #1b9dd8', boxSizing: 'border-box' },
   rcBanner: { position: 'relative', height: '105px', borderRadius: '7px', backgroundSize: 'cover', backgroundPosition: 'center', overflow: 'hidden', marginBottom: '14px' },
   rcBannerOverlay: { position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(12,20,29,.06),rgba(12,20,29,.9))' },
   rcBannerTitle: { position: 'absolute', bottom: '11px', left: '12px', margin: 0, color: '#f8fafc', fontSize: '16px', fontWeight: 820, letterSpacing: '.03em', textShadow: '0 2px 4px rgba(0,0,0,.85)' },
@@ -1160,7 +1350,7 @@ const styles = {
   rcFeatureRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '7px', marginBottom: '8px' },
   rcFeatureLabel: { color: '#b0c3d6', fontSize: '11px', fontWeight: 540, width: '84px' },
   rcBarContainer: { flex: 1, margin: '0 5px', background: '#2f425b', height: '6px', borderRadius: '50px', overflow: 'hidden' },
-  rcBarFill: { background: '#587ec1', height: '100%', borderRadius: '50px' },
+  rcBarFill: { background: '#17c7fa', height: '100%', borderRadius: '50px' },
   rcFeatureValue: { color: '#e0eaf3', fontSize: '11px', fontWeight: 720, width: '25px', textAlign: 'right' },
   rcHamsterBox: { position: 'relative', background: '#121e2d', border: '1px solid #30475f', borderRadius: '7px', padding: '16px 10px 14px', minHeight: '145px', marginBottom: '11px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' },
   rcLevelBadge: { position: 'absolute', top: '8px', left: '8px', background: '#236b83', color: '#e6faff', padding: '4px 7px', borderRadius: '4px', fontSize: '10px', fontWeight: 740 },
@@ -1170,6 +1360,6 @@ const styles = {
   rcHamsterImg: { height: '76px', objectFit: 'contain', marginBottom: '9px', filter: 'drop-shadow(0 5px 6px rgba(0,0,0,.2))' },
   rcTimerPill: { color: '#b7cfdf', padding: '4px 11px', borderRadius: '5px', fontSize: '11px', fontWeight: 720, background: '#203449', marginBottom: '7px' },
   rcMoreInfo: { fontSize: '11px', fontWeight: 750, textAlign: 'center', letterSpacing: '.09em' },
-  rcViewBtn: { width: '100%', color: '#eef8ff', border: '1px solid #486ba0', padding: '12px', borderRadius: '7px', fontSize: '12px', fontWeight: 730, letterSpacing: '.015em', cursor: 'pointer' },
+  rcViewBtn: { width: '100%', color: '#eef8ff', border: '1px solid #42c8ff', boxShadow: '0 0 11px rgba(24,170,255,.25)', padding: '12px', borderRadius: '7px', fontSize: '12px', fontWeight: 730, letterSpacing: '.015em', cursor: 'pointer' },
   gridActivas: { display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'flex-start' },
 };
