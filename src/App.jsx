@@ -267,10 +267,6 @@ export default function App() {
   const [procesandoId, setProcesandoId] = useState(null);
   const [errorDashboard, setErrorDashboard] = useState('');
   const [mensajeOperacion, setMensajeOperacion] = useState('');
-  const [usuario, setUsuario] = useState(null);
-  const [emailAcceso, setEmailAcceso] = useState('');
-  const [enviandoEnlace, setEnviandoEnlace] = useState(false);
-  const [mensajeAcceso, setMensajeAcceso] = useState('');
   const operacionEnCurso = useRef(false);
   const versionSimulacion = useRef(0);
 
@@ -311,53 +307,8 @@ export default function App() {
     localStorage.setItem('rc_expeditions_form', JSON.stringify(form));
   }, [form]);
 
-  // La lectura del historial es pública según tus políticas RLS actuales.
-  // Para escribir, el frontend exige sesión y la BD debe permitirlo SOLO a tu UID.
-  useEffect(() => {
-    let montado = true;
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (error) console.error('Error de sesión:', error);
-      if (montado) setUsuario(data?.session?.user || null);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_evento, session) => {
-      setUsuario(session?.user || null);
-    });
-    return () => { montado = false; subscription.unsubscribe(); };
-  }, []);
-
-  const solicitarAcceso = async (event) => {
-    event?.preventDefault();
-    const email = emailAcceso.trim();
-    if (!email) return;
-    setEnviandoEnlace(true);
-    setMensajeAcceso('');
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: window.location.origin,
-          shouldCreateUser: false,
-        },
-      });
-      if (error) throw error;
-      setMensajeAcceso('Si el usuario está habilitado, recibirás un enlace de acceso en tu correo.');
-    } catch (error) {
-      setMensajeAcceso(`No se pudo solicitar acceso: ${error.message}`);
-    } finally {
-      setEnviandoEnlace(false);
-    }
-  };
-
-  const cerrarSesion = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) setMensajeAcceso(`Error al cerrar sesión: ${error.message}`);
-  };
-
-  const requerirPermiso = () => {
-    if (usuario) return true;
-    setMensajeOperacion('Inicia sesión como administrador para enviar, finalizar o borrar expediciones.');
-    return false;
-  };
+  // Uso sin inicio de sesión: Supabase aplica los permisos RLS de la base de datos.
+  // Quitar el login de React no concede permisos si RLS los restringe.
 
   const cargarDashboard = async () => {
     setErrorDashboard('');
@@ -371,7 +322,12 @@ export default function App() {
       setActivas(respuestaActivas.data || []);
       setHistorial(respuestaHist.data || []);
 
-      const res = await fetch(`${FASTAPI_URL}/metricas`);
+      let res;
+      try {
+        res = await fetch(`${FASTAPI_URL}/metricas`);
+      } catch (error) {
+        throw new Error(`No hay conexión desde Vercel hacia Render. Revisa CORS_ORIGINS en Render (incluye https://rollercoin-ai-panel.vercel.app). Detalle: ${error.message}`);
+      }
       const datos = await res.json();
       if (!res.ok) throw new Error(datos.detail || `Error del backend: ${res.status}`);
       setMetricas(datos.metricas);
@@ -434,16 +390,21 @@ export default function App() {
         throw new Error('Las estadísticas o el porcentaje no son válidos.');
       }
 
-      const respuesta = await fetch(`${FASTAPI_URL}/simular`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          hamster: form.hamster,
-          stats,
-          expedicion: form.expedicion,
-          porcentaje,
-        })
-      });
+      let respuesta;
+      try {
+        respuesta = await fetch(`${FASTAPI_URL}/simular`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            hamster: form.hamster,
+            stats,
+            expedicion: form.expedicion,
+            porcentaje,
+          })
+        });
+      } catch (error) {
+        throw new Error(`No hay conexión desde Vercel hacia Render. Revisa CORS_ORIGINS en Render (incluye https://rollercoin-ai-panel.vercel.app). Detalle: ${error.message}`);
+      }
       const datos = await respuesta.json();
       if (!respuesta.ok || datos.error || typeof datos.probabilidad_ia !== 'number') {
         const detalle = Array.isArray(datos.detail)
@@ -467,7 +428,7 @@ export default function App() {
   // --- LÓGICA DE GUARDAR (MODAL) ---
   const confirmarGuardar = (e) => {
     e?.preventDefault();
-    if (!requerirPermiso() || operacionEnCurso.current) return;
+    if (operacionEnCurso.current) return;
     const mapaSelec = resolverMapa(form.expedicion).nombre;
     setModalConfig({
       isOpen: true,
@@ -479,7 +440,7 @@ export default function App() {
   };
 
   const ejecutarGuardar = async () => {
-    if (!requerirPermiso() || operacionEnCurso.current) return;
+    if (operacionEnCurso.current) return;
     operacionEnCurso.current = true;
     setGuardando(true);
     setMensajeOperacion('');
@@ -519,7 +480,7 @@ export default function App() {
       setMensajeOperacion(`Expedición registrada correctamente (ID ${data.id}).`);
       await cargarDashboard();
     } catch (error) {
-      setMensajeOperacion(`No se pudo guardar la expedición: ${error.message}`);
+      setMensajeOperacion(`No se pudo guardar la expedición: ${error.message}${String(error.code) === '42501' ? ' (verifica los permisos RLS en Supabase)' : ''}`);
       console.error('Error al guardar:', error);
     } finally {
       operacionEnCurso.current = false;
@@ -529,7 +490,7 @@ export default function App() {
 
   // --- LÓGICA DE ELIMINAR (MODAL) ---
   const confirmarEliminar = (id, hamsterName) => {
-    if (!requerirPermiso() || operacionEnCurso.current) return;
+    if (operacionEnCurso.current) return;
     setModalConfig({
       isOpen: true,
       type: 'delete',
@@ -540,7 +501,7 @@ export default function App() {
   };
 
   const ejecutarEliminar = async (id) => {
-    if (!requerirPermiso() || operacionEnCurso.current) return;
+    if (operacionEnCurso.current) return;
     operacionEnCurso.current = true;
     setProcesandoId(id);
     setMensajeOperacion('');
@@ -553,7 +514,7 @@ export default function App() {
       setMensajeOperacion('Expedición activa eliminada correctamente.');
       await cargarDashboard();
     } catch (error) {
-      setMensajeOperacion(`No se pudo eliminar: ${error.message}`);
+      setMensajeOperacion(`No se pudo eliminar: ${error.message}${String(error.code) === '42501' ? ' (verifica los permisos RLS en Supabase)' : ''}`);
       console.error('Error al eliminar:', error);
     } finally {
       operacionEnCurso.current = false;
@@ -562,7 +523,7 @@ export default function App() {
   };
 
   const finalizar = async (id, sobrevivio) => {
-    if (!requerirPermiso() || operacionEnCurso.current) return;
+    if (operacionEnCurso.current) return;
     operacionEnCurso.current = true;
     setProcesandoId(id);
     setMensajeOperacion('');
@@ -577,7 +538,7 @@ export default function App() {
       setMensajeOperacion(`Resultado registrado: ${sobrevivio ? 'VIVIÓ' : 'MURIÓ'}. Las métricas del modelo pueden reflejarlo después de actualizar su caché.`);
       await cargarDashboard();
     } catch (error) {
-      setMensajeOperacion(`No se pudo finalizar: ${error.message}`);
+      setMensajeOperacion(`No se pudo finalizar: ${error.message}${String(error.code) === '42501' ? ' (verifica los permisos RLS en Supabase)' : ''}`);
       console.error('Error al finalizar:', error);
     } finally {
       operacionEnCurso.current = false;
@@ -617,10 +578,6 @@ export default function App() {
     .ia-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
     .ia-metric { background: #101827; border: 1px solid #27384f; border-radius: 10px; padding: 15px; }
     .ia-metric strong { display: block; font-size: 25px; margin-top: 6px; }
-    .account-box { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
-    .account-box input { max-width: 260px; padding: 10px; background: #0b0d14; border: 1px solid #344258; color: white; border-radius: 7px; }
-    .account-box button { padding: 10px 13px; border-radius: 7px; background: #155e75; color: white; cursor: pointer; border: 1px solid #22d3ee; }
-    .account-box button:disabled { opacity: .6; cursor: wait; }
     .system-message { background: #16263b; color: #e0f2fe; padding: 11px 15px; border: 1px solid #245b89; border-radius: 8px; margin: 0 0 17px; font-size: 13px; line-height: 1.5; }
     .test-card { background: #121827; border: 1px solid #334155; border-radius: 12px; margin-bottom: 24px; padding: 18px; color: #cbd5e1; }
     .test-card strong { color: #fff; }
@@ -684,19 +641,9 @@ export default function App() {
           <div style={{ textAlign: 'center' }}>
             <h1 style={{ margin: 0, fontSize: '20px', color: '#fff', letterSpacing: '1px' }}>🐹 AI EXPEDITIONS CONTROL PANEL</h1>
             <div style={{ color: '#64748b', fontSize: '12px', marginTop: 6 }}>RollerCoin AI v2.0 · Predicciones estadísticas, no garantías</div>
-            {usuario ? (
-              <div className="account-box">
-                <span style={{ color: '#86efac', fontSize: 12 }}>🔓 Administrador: {usuario.email || 'Sesión activa'}</span>
-                <button type="button" onClick={cerrarSesion}>Cerrar sesión</button>
-              </div>
-            ) : (
-              <form className="account-box" onSubmit={solicitarAcceso}>
-                <span style={{ color: '#94a3b8', fontSize: 12 }}>🔒 Inicia sesión para registrar resultados:</span>
-                <input type="email" required aria-label="Correo del administrador" placeholder="correo del administrador" value={emailAcceso} onChange={e => setEmailAcceso(e.target.value)} />
-                <button type="submit" disabled={enviandoEnlace}>{enviandoEnlace ? 'Enviando...' : 'Recibir enlace de acceso'}</button>
-              </form>
-            )}
-            {mensajeAcceso && <div style={{ marginTop: 8, color: '#fcd34d', fontSize: 12 }}>{mensajeAcceso}</div>}
+            <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: 9 }}>
+              Simula expediciones sin iniciar sesión · El acceso a los registros depende de los permisos de Supabase.
+            </div>
           </div>
         </div>
 
