@@ -188,7 +188,7 @@ function SelectorMapa({ valorActual, onSelect }) {
 
 function RollerCard({ mapa, hamsterName, stats, nivel, probabilidad, viveIA, onAction, actionLabel, isPreview, bonoManual, disabled = false }) {
   const hamsterObj = HAMSTERS_DEFAULT.find(h => h.nombre === hamsterName) || HAMSTERS_DEFAULT[0];
-  const colorBoton = isPreview ? '#354574' : '#2b354a';
+  const colorBoton = isPreview ? '#345b99' : '#283e5a';
   const imagenCalculada = isPreview || hamsterName ? getImagenEvolucion(hamsterObj.slug, nivel) : '';
   const bonoAMostrar = bonoManual !== undefined ? bonoManual : hamsterObj.bono;
   const tienePrediccion = probabilidad !== null && probabilidad !== undefined && probabilidad !== '' && Number.isFinite(Number(probabilidad));
@@ -702,6 +702,98 @@ export default function App() {
     .btn-confirm-delete { background: #7c3f46; color: #fdf0f0; border-color: #9d4b54; }
     .btn-confirm-send { background: #2797af; color: #06161e; border-color: #48b6c5; }
 
+
+    /* v4 · ajustes de jerarquía + color contenido, sin gradientes multicolor */
+    :root { --rc-bg:#0b1120; --rc-surface:#121d2d; --rc-line:#29405a; --rc-main:#43c6ea; --rc-main-bright:#60d7f3; --rc-muted:#9bb1c9; --rc-green:#4fdda6; --rc-red:#f18a94; }
+    .rc-eyebrow { color:#86b4ce; font-weight:800; letter-spacing:.14em; font-size:10px; }
+    .rc-bullet { color:#51778f; }
+    .rc-heading-dot { color:var(--rc-main); }
+    .rc-header { border-bottom-color:#28374b; }
+    .rc-brand-mark { background:#123041; border-color:#297996; color:#f2fbff; box-shadow:inset 0 0 0 1px rgba(75,193,228,.05); }
+    .rc-brand-mark span { color:var(--rc-main-bright); }
+    .rc-brand-copy h1 { color:#f6fbff; font-size:clamp(23px,3vw,30px); font-weight:800; }
+    .rc-brand-copy p { color:#a2b6cb; }
+    .rc-status { border-color:#2b514d; background:#132522; color:#b5e0d2; }
+    .rc-status-dot { background:#4fdda6; box-shadow:0 0 0 3px rgba(79,221,166,.13); }
+    .rc-refresh { background:#1a2c40; border-color:#36506b; color:#e7f4ff; font-weight:700; }
+    .rc-refresh:hover { background:#23405b; border-color:#4bbbd7; }
+    .rc-overview { background:#131e2d; border-color:#2a415a; box-shadow:0 7px 30px rgba(0,0,0,.11); }
+    .rc-stat + .rc-stat { border-left-color:#2b3b4f; }
+    .rc-stat { padding-top:20px; }
+    .rc-stat-label { color:#a7bad0; font-weight:670; letter-spacing:.012em; }
+    .rc-stat-number { color:#f5f9fe; font-size:clamp(27px,3vw,35px); font-weight:790; }
+    .rc-stat-meta { color:#8ca0b7; }
+    .rc-stat-positive .rc-stat-number { color:#4fdda6; }
+    .rc-stat-negative .rc-stat-number { color:#f18a94; }
+    .rc-stat-cyan .rc-stat-number { color:#55c8f1; }
+    .rc-stat-cyan:after { content:""; position:absolute; left:20px; right:20px; bottom:0; height:2px; background:#3bb8df; opacity:.8; border-radius:2px; }
+    .rc-panel-heading { border-bottom-color:#2b4258; padding-top:25px; padding-bottom:24px; }
+    .rc-panel-heading h2,.rc-section-heading h2,.rc-prediction-head h2 { color:#f4f9ff; font-size:20px; font-weight:790; letter-spacing:-.03em; }
+    .rc-panel-heading p { color:#9fb4c9; }
+    .rc-model-panel { background:#121e2d; border-color:#2a415c; }
+    .rc-panel-tag { background:#143a30; color:#6ce4b1; border-color:#2f785f; font-weight:730; }
+    .rc-comparison-kicker { color:#6dbee0; font-size:10px; letter-spacing:.12em; font-weight:800; margin-bottom:18px; display:flex; align-items:center; gap:9px; }
+    .rc-kicker-line { flex:0 0 auto; width:15px; height:3px; border-radius:4px; background:var(--rc-main); display:inline-block; vertical-align:middle; }
+    .rc-model-item-featured .rc-model-item-top strong { color:#5ad2f2; font-size:32px; letter-spacing:-.045em; font-weight:820; line-height:1.15; }
+    .rc-model-item-featured .rc-model-item-top span { color:#d1e3f1; font-size:13px; font-weight:730; }
+    .rc-model-item + .rc-model-item { margin-top:22px; }
+    .rc-model-item-top span { color:#a8bdd0; }
+    .rc-model-item-top strong { color:#e7f0fa; font-weight:720; }
+    .rc-track { background:#2b3d51; height:8px; }
+    .rc-fill-ia { background:#43c6ea; }
+    .rc-fill-base { background:#8598c5; }
+    .rc-fill-win { background:#54d4a7; }
+    .rc-model-side { background:#172538; border-left-color:#2d435b; }
+    .rc-side-title { font-size:12px; font-weight:720; color:#d2e5f5; }
+    .rc-side-title span { font-size:11px; color:#91a8bf; }
+    .rc-brier-row { color:#afc1d2; border-bottom-color:#334960; }
+    .rc-brier-row strong { color:#edf6fe; font-weight:760; }
+    .rc-training-meta strong { color:#f3f9ff; font-size:23px; font-weight:780; }
+    .rc-training-meta span { color:#a1b7cb; font-size:11px; }
+    .rc-model-source { margin-top:23px; padding:11px 13px; border-left:2px solid #528db2; background:#1a2a3c; color:#a6c0d4; border-radius:0 6px 6px 0; }
+    .rc-model-source strong { color:#c5e8fa; font-weight:750; }
+    .rc-model-footer { color:#92a8bc; border-top-color:#293f56; background:rgba(12,24,39,.45); }
+    .rc-section-heading { position:relative; }
+    .rc-section-heading h2 { font-size:20px; }
+    .rc-section-aside { color:#91a6bd; }
+    .rc-hamster-card { background:#142135; border-color:#293f57; }
+    .rc-hamster-card:hover { background:#1b2d43; border-color:#4faac8; box-shadow:0 8px 20px rgba(7,26,47,.26); }
+    .rc-hamster-avatar { background:#233249; border-color:#354d69; }
+    .rc-hamster-name { color:#f1f7fc; font-size:13px; }
+    .rc-hamster-win strong { color:#eff9ff; font-size:24px; font-weight:800; }
+    .rc-hamster-win span,.rc-hamster-total,.rc-hamster-stats,.rc-hamster-streak { color:#a1b7cc; }
+    .rc-hamster-streak { border-top-color:#2e435a; }
+    .rc-dot-green { background:#4fdda6; }
+    .premium-input:focus-within { border-color:#4bc0e1 !important; box-shadow:0 0 0 3px rgba(67,198,234,.13)!important; }
+    .card-hover:hover { border-color:#54849d !important; }
+    .rc-predict-btn { background:#36b9df; border-color:#55c9eb; color:#061926; font-weight:840; box-shadow:0 5px 16px rgba(17,153,199,.14); }
+    .rc-predict-btn:hover:not(:disabled) { background:#60d4f2; box-shadow:0 7px 20px rgba(29,165,210,.23); }
+    .rc-prediction { background:#121f2e; border:1px solid #3b7796; box-shadow:0 10px 35px rgba(19,72,103,.13); }
+    .rc-prediction-head { border-bottom-color:#29485e; background:#15263a; }
+    .rc-prediction-outcome { background:#14382f; border-color:#2f8669; color:#7df0ba; font-size:12px; font-weight:730; }
+    .rc-prediction-outcome.is-negative { background:#3a242d; border-color:#a45765; color:#ffa2aa; }
+    .rc-primary-prob { border-right-color:#29485e; }
+    .rc-primary-label { display:flex; align-items:center; gap:8px; color:#a8d5e8; font-size:10px; font-weight:800; letter-spacing:.045em; }
+    .rc-primary-value { color:#5bd3f5; font-size:clamp(49px,5vw,66px); font-weight:830; line-height:1.16; margin:11px 0; }
+    .rc-primary-value span { color:#8fb8cf; font-size:.47em; }
+    .rc-primary-caption { color:#a5bacc; font-size:11px; }
+    .rc-prediction-row > div:first-child { color:#b1c5d6; font-size:12px; }
+    .rc-prediction-row strong { color:#f0f8ff; font-size:14px; }
+    .rc-prediction-diff { background:#1b3144; border:1px solid #315773; border-radius:8px; margin-top:21px; padding:12px 14px; color:#bfd5e5; align-items:center; font-size:11px; }
+    .rc-prediction-diff strong { font-size:21px; line-height:1.2; color:#73dbf7; white-space:nowrap; font-variant-numeric:tabular-nums; }
+    .rc-prediction-diff small { font-size:11px; font-weight:570; color:#9fbdd2; }
+    .rc-prediction-footer { background:#122030; border-top-color:#294459; color:#a0b5c9; }
+    .rc-count { background:#1d4058; border:1px solid #2e607e; color:#8dddf4; font-weight:800; }
+    .rc-result-button { background:#215a48; border-color:#367f64; color:#dcfbee; }
+    .rc-result-lose { background:#603139; border-color:#994a56; color:#ffe6e9; }
+    .historial-item { background:#142032; border-color:#294056; }
+    .rc-history-win { border-left:3px solid #4fdda6; }
+    .rc-history-lose { border-left:3px solid #f18a94; }
+    .modal-content { background:#18263a; border-color:#385775; }
+    .btn-confirm-send { background:#38bcdf; border-color:#55d2f0; color:#061c24; }
+    @media (max-width:780px) { .rc-model-side { border-left:0; border-top:1px solid #2d435b; } .rc-primary-prob { border-right:0; border-bottom:1px solid #29485e; } }
+    @media (max-width:560px) { .rc-prediction-diff { flex-wrap:wrap; gap:7px; } .rc-comparison-kicker { font-size:9px; } .rc-stat { padding-top:18px; } .rc-stat-cyan:after { left:14px; right:14px; } }
+
     @media (max-width: 1020px) {
       .rc-overview { grid-template-columns: repeat(3,minmax(0,1fr)); }
       .rc-stat:nth-child(4) { border-left: 0; border-top: 1px solid #25303c; }
@@ -818,9 +910,9 @@ export default function App() {
         <section className="rc-model-panel" aria-label="Rendimiento del modelo">
           <div className="rc-panel-heading">
             <div>
-              <div className="rc-eyebrow">MODEL INSIGHTS <span className="rc-bullet">/</span> RANDOM FOREST</div>
-              <h2>Rendimiento del modelo</h2>
-              <p>Validación con expediciones posteriores a las utilizadas para entrenar.</p>
+              <div className="rc-eyebrow">ANÁLISIS DEL MODELO <span className="rc-bullet">/</span> RANDOM FOREST</div>
+              <h2>¿Qué tan precisa es la IA?</h2>
+              <p>Comparación con expediciones que el modelo no utilizó para entrenar.</p>
             </div>
             <span className="rc-panel-tag">{estadoModelo === 'entrenado' ? 'Entrenado' : estadoModelo || 'Sin verificar'}</span>
           </div>
@@ -828,7 +920,8 @@ export default function App() {
             <>
               <div className="rc-model-grid">
                 <div className="rc-model-comparison">
-                  <div className="rc-model-item">
+                  <div className="rc-comparison-kicker"><span className="rc-kicker-line"/> RESULTADOS EN DATOS DE PRUEBA</div>
+                  <div className="rc-model-item rc-model-item-featured">
                     <div className="rc-model-item-top"><span>Exactitud de la IA</span><strong>{evaluacionModelo.exactitud_ia_porc}%</strong></div>
                     <div className="rc-track"><div className="rc-track-fill rc-fill-ia" style={{width: `${Math.max(0, Math.min(100, Number(evaluacionModelo.exactitud_ia_porc) || 0))}%`}} /></div>
                   </div>
@@ -836,10 +929,10 @@ export default function App() {
                     <div className="rc-model-item-top"><span>Exactitud de la estimación base</span><strong>{evaluacionModelo.exactitud_oficial_porc}%</strong></div>
                     <div className="rc-track"><div className="rc-track-fill rc-fill-base" style={{width: `${Math.max(0, Math.min(100, Number(evaluacionModelo.exactitud_oficial_porc) || 0))}%`}} /></div>
                   </div>
-                  <div className="rc-model-source">El porcentaje base proviene de tu fórmula/registro, no de una consulta al servidor de RollerCoin.</div>
+                  <div className="rc-model-source"><strong>Referencia estimada.</strong> El porcentaje base se calcula en tu página; no procede directamente de RollerCoin.</div>
                 </div>
                 <div className="rc-model-side">
-                  <div className="rc-side-title">Calidad de las probabilidades <span>↓ menor es mejor</span></div>
+                  <div className="rc-side-title">Error de probabilidad <span>Brier Score · mientras más bajo, mejor</span></div>
                   <div className="rc-brier-row"><span>Brier · IA</span><strong>{evaluacionModelo.brier_ia}</strong></div>
                   <div className="rc-brier-row"><span>Brier · Referencia</span><strong>{evaluacionModelo.brier_oficial}</strong></div>
                   <div className="rc-training-meta">
@@ -911,12 +1004,12 @@ export default function App() {
               </div>
               <div>
                 <label style={styles.label}>STATS</label>
-                <input type="number" value={form.stats} readOnly style={{ ...styles.input, backgroundColor: '#0e1923', color: '#b7dae3', borderColor: '#2b3c49', cursor: 'not-allowed', boxShadow: 'none' }} />
+                <input type="number" value={form.stats} readOnly style={{ ...styles.input, backgroundColor: '#102238', color: '#84d9ef', borderColor: '#38546b', cursor: 'not-allowed', boxShadow: 'none' }} />
               </div>
             </div>
 
             <label style={styles.label}>PROBABILIDAD BASE ESTIMADA</label>
-            <input type="text" value={`${form.porcentaje}%`} readOnly style={{ ...styles.input, backgroundColor: '#0e1923', color: '#9ecfbd', borderColor: '#2b3c49', fontWeight: 'bold', cursor: 'not-allowed', boxShadow: 'none' }} />
+            <input type="text" value={`${form.porcentaje}%`} readOnly style={{ ...styles.input, backgroundColor: '#102238', color: '#74ddb3', borderColor: '#38546b', fontWeight: 'bold', cursor: 'not-allowed', boxShadow: 'none' }} />
 
             <button className="rc-predict-btn" onClick={simular} disabled={simulando}>{simulando ? 'Calculando predicción…' : 'Calcular probabilidad'} <span aria-hidden="true">→</span></button>
           </div>
@@ -943,14 +1036,14 @@ export default function App() {
         {simulacion && (
           <section className="rc-prediction" aria-label="Resultado de la predicción">
             <div className="rc-prediction-head">
-              <div><div className="rc-eyebrow">RESULTADO DE SIMULACIÓN</div><h2>Pronóstico de supervivencia</h2></div>
+              <div><div className="rc-eyebrow">SIMULACIÓN FINALIZADA</div><h2>Pronóstico de supervivencia</h2></div>
               <span className={`rc-prediction-outcome ${simulacion.vive_ia === 'SI' ? 'is-positive' : 'is-negative'}`}>{simulacion.vive_ia === 'SI' ? 'Supervivencia prevista' : 'Riesgo de derrota'}</span>
             </div>
             <div className="rc-prediction-grid">
               <div className="rc-primary-prob">
-                <div className="rc-primary-label">Estimación del modelo</div>
+                <div className="rc-primary-label"><span className="rc-kicker-line"/> PROBABILIDAD DE SUPERVIVENCIA · IA</div>
                 <div className="rc-primary-value">{simulacion.probabilidad_ia}<span>%</span></div>
-                <div className="rc-primary-caption">Random Forest · datos históricos</div>
+                <div className="rc-primary-caption">Predicción estadística de Random Forest</div>
               </div>
               <div className="rc-prediction-bars">
                 <div className="rc-prediction-row">
@@ -961,7 +1054,7 @@ export default function App() {
                   <div><span>Estimación calculada del juego</span><strong>{simulacion.probabilidad_oficial}%</strong></div>
                   <div className="rc-track"><div className="rc-track-fill rc-fill-base" style={{width:`${Math.max(0, Math.min(100, Number(simulacion.probabilidad_oficial) || 0))}%`}} /></div>
                 </div>
-                <div className="rc-prediction-diff"><span>Diferencia IA − referencia</span><strong>{Number(simulacion.diferencia_puntos) > 0 ? '+' : ''}{simulacion.diferencia_puntos} puntos</strong></div>
+                <div className="rc-prediction-diff"><span>Diferencia frente a la referencia</span><strong>{Number(simulacion.diferencia_puntos) > 0 ? '+' : ''}{simulacion.diferencia_puntos} <small>puntos</small></strong></div>
               </div>
             </div>
             <div className="rc-prediction-footer">
@@ -1050,33 +1143,33 @@ export default function App() {
 // ESTILOS INLINE PREMIUM
 // ==========================================
 const styles = {
-  page: { backgroundColor: '#0b1017', minHeight: '100vh', color: '#dce6ef', fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif', padding: '10px 22px 54px' },
+  page: { backgroundColor: '#0b1120', minHeight: '100vh', color: '#edf5ff', fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif', padding: '10px 22px 54px' },
   container: { maxWidth: '1160px', margin: '0 auto' },
   navBar: { display: 'none' },
   controlPanel: { display: 'flex', flexDirection: 'column', gap: '13px' },
-  contenedorFormulario: { background: '#121a24', padding: '30px', borderRadius: '12px', border: '1px solid #283443', boxSizing: 'border-box' },
-  label: { display: 'block', color: '#8ca1b5', fontSize: '10px', fontWeight: 760, letterSpacing: '1.12px', textTransform: 'uppercase' },
-  input: { width: '100%', backgroundColor: '#0c131c', border: '1px solid #2a3949', padding: '12px 13px', borderRadius: '7px', color: '#e1eaf4', fontSize: '13px', outline: 'none', boxSizing: 'border-box', transition: 'border-color .18s, box-shadow .18s' },
-  dropdownList: { position: 'absolute', top: '100%', left: 0, right: 0, background: '#15202b', border: '1px solid #384a59', borderRadius: '8px', maxHeight: '240px', overflowY: 'auto', zIndex: 100, marginTop: '5px', boxShadow: '0 14px 30px rgba(0,0,0,.4)' },
+  contenedorFormulario: { background: '#142135', padding: '30px', borderRadius: '12px', border: '1px solid #2b4762', boxSizing: 'border-box' },
+  label: { display: 'block', color: '#b0c8dc', fontSize: '10px', fontWeight: 760, letterSpacing: '1.12px', textTransform: 'uppercase' },
+  input: { width: '100%', backgroundColor: '#0d1828', border: '1px solid #34516c', padding: '12px 13px', borderRadius: '7px', color: '#e1eaf4', fontSize: '13px', outline: 'none', boxSizing: 'border-box', transition: 'border-color .18s, box-shadow .18s' },
+  dropdownList: { position: 'absolute', top: '100%', left: 0, right: 0, background: '#18283b', border: '1px solid #42627f', borderRadius: '8px', maxHeight: '240px', overflowY: 'auto', zIndex: 100, marginTop: '5px', boxShadow: '0 14px 30px rgba(0,0,0,.4)' },
   dropdownItem: { padding: '11px 13px', color: '#dce8f1', cursor: 'pointer', borderBottom: '1px solid #263441', fontSize: '12px' },
-  rcCard: { position: 'relative', background: '#17212b', width: '300px', borderRadius: '10px', padding: '11px', border: '1px solid #2c3949', boxSizing: 'border-box' },
+  rcCard: { position: 'relative', background: '#18283b', width: '300px', borderRadius: '10px', padding: '11px', border: '1px solid #35506c', boxSizing: 'border-box' },
   rcBanner: { position: 'relative', height: '105px', borderRadius: '7px', backgroundSize: 'cover', backgroundPosition: 'center', overflow: 'hidden', marginBottom: '14px' },
   rcBannerOverlay: { position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(12,20,29,.06),rgba(12,20,29,.9))' },
   rcBannerTitle: { position: 'absolute', bottom: '11px', left: '12px', margin: 0, color: '#f8fafc', fontSize: '16px', fontWeight: 820, letterSpacing: '.03em', textShadow: '0 2px 4px rgba(0,0,0,.85)' },
   rcFeatures: { padding: '0 5px', marginBottom: '14px' },
   rcFeatureRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '7px', marginBottom: '8px' },
-  rcFeatureLabel: { color: '#8b9eb0', fontSize: '11px', fontWeight: 540, width: '84px' },
-  rcBarContainer: { flex: 1, margin: '0 5px', background: '#263342', height: '6px', borderRadius: '50px', overflow: 'hidden' },
-  rcBarFill: { background: '#6381ba', height: '100%', borderRadius: '50px' },
+  rcFeatureLabel: { color: '#b0c3d6', fontSize: '11px', fontWeight: 540, width: '84px' },
+  rcBarContainer: { flex: 1, margin: '0 5px', background: '#2f425b', height: '6px', borderRadius: '50px', overflow: 'hidden' },
+  rcBarFill: { background: '#587ec1', height: '100%', borderRadius: '50px' },
   rcFeatureValue: { color: '#e0eaf3', fontSize: '11px', fontWeight: 720, width: '25px', textAlign: 'right' },
-  rcHamsterBox: { position: 'relative', background: '#111923', border: '1px solid #263340', borderRadius: '7px', padding: '16px 10px 14px', minHeight: '145px', marginBottom: '11px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' },
-  rcLevelBadge: { position: 'absolute', top: '8px', left: '8px', background: '#235a62', color: '#d9f5f1', padding: '4px 7px', borderRadius: '4px', fontSize: '10px', fontWeight: 740 },
+  rcHamsterBox: { position: 'relative', background: '#121e2d', border: '1px solid #30475f', borderRadius: '7px', padding: '16px 10px 14px', minHeight: '145px', marginBottom: '11px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' },
+  rcLevelBadge: { position: 'absolute', top: '8px', left: '8px', background: '#236b83', color: '#e6faff', padding: '4px 7px', borderRadius: '4px', fontSize: '10px', fontWeight: 740 },
   rcIconTopRight: { position: 'absolute', top: '8px', right: '8px', color: '#7f9eac', fontWeight: 800, letterSpacing: '.13em', fontSize: '10px' },
   rcHamsterName: { color: '#eaf1f8', fontSize: '14px', fontWeight: 710, marginBottom: '8px', marginTop: '1px', textAlign: 'center' },
   rcHiddenBonus: { display: 'flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '50px', fontSize: '10px', fontWeight: 700, marginBottom: '6px', border: '1px solid' },
   rcHamsterImg: { height: '76px', objectFit: 'contain', marginBottom: '9px', filter: 'drop-shadow(0 5px 6px rgba(0,0,0,.2))' },
-  rcTimerPill: { color: '#a7b8c8', padding: '4px 11px', borderRadius: '5px', fontSize: '11px', fontWeight: 720, background: '#192633', marginBottom: '7px' },
+  rcTimerPill: { color: '#b7cfdf', padding: '4px 11px', borderRadius: '5px', fontSize: '11px', fontWeight: 720, background: '#203449', marginBottom: '7px' },
   rcMoreInfo: { fontSize: '11px', fontWeight: 750, textAlign: 'center', letterSpacing: '.09em' },
-  rcViewBtn: { width: '100%', color: '#eaf2fc', border: '1px solid #47547a', padding: '12px', borderRadius: '7px', fontSize: '12px', fontWeight: 730, letterSpacing: '.015em', cursor: 'pointer' },
+  rcViewBtn: { width: '100%', color: '#eef8ff', border: '1px solid #486ba0', padding: '12px', borderRadius: '7px', fontSize: '12px', fontWeight: 730, letterSpacing: '.015em', cursor: 'pointer' },
   gridActivas: { display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'flex-start' },
 };
