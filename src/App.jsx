@@ -944,7 +944,7 @@ export default function App() {
     /* Active expeditions: compact, not giant vertically stacked cards */
     .rc-active-section { margin:20px 0 27px; }
     .rc-active-list { display:grid; grid-template-columns:1fr; gap:9px; }
-    .rc-active-entry { min-width:0; border:1px solid #28699d; border-radius:9px; background:linear-gradient(110deg,#0c2037,#0a192d); display:grid; grid-template-columns:minmax(134px,1.05fr) minmax(140px,1.15fr) 100px auto; gap:13px; align-items:center; padding:9px 12px; box-shadow:inset 0 0 12px rgba(0,130,220,.06); }
+    .rc-active-entry { width:100%; max-width:none; min-width:0; border:1px solid #28699d; border-radius:10px; background:linear-gradient(110deg,#0c2037,#0a192d); display:grid; grid-template-columns:minmax(140px,.9fr) minmax(145px,1fr) minmax(165px,.9fr) minmax(230px,1.35fr); gap:13px; align-items:center; padding:12px 14px; box-shadow:inset 0 0 12px rgba(0,130,220,.06); }
     .rc-active-map { height:59px; border-radius:6px; background-position:center; background-size:cover; display:flex; align-items:end; padding:8px 10px; overflow:hidden; }
     .rc-active-map span { font-size:12px; font-weight:900; color:#fff; text-shadow:0 1px 5px #000; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; }
     .rc-active-identity { display:flex; align-items:center; min-width:0; gap:8px; }
@@ -952,14 +952,27 @@ export default function App() {
     .rc-active-identity div { display:flex; flex-direction:column; gap:3px; min-width:0; }
     .rc-active-identity strong { font-size:12px; font-weight:800; color:#eef8ff; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
     .rc-active-identity small { font-size:10px; color:#8fb3ca; }
-    .rc-active-pred { display:flex; flex-direction:column; gap:4px; align-items:center; }
-    .rc-active-pred span { font-size:9px; color:#87abc8; text-transform:uppercase; }
-    .rc-active-pred strong { color:#56e4ff; font-size:16px; font-weight:900; }
-    .rc-active-actions { display:flex; gap:7px; }
-    .rc-result-button { background:#075a35; border-color:#1ee283; color:#ddffee; border-radius:6px; padding:10px 11px; font-size:11px; font-weight:850; box-shadow:0 0 10px rgba(19,232,118,.16); white-space:nowrap; }
+    /* Predicción diferenciada visualmente de un resultado real ya observado. */
+    .rc-active-pred { min-width:0; min-height:65px; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:5px; padding:9px 12px; background:#09293a; border:1px solid #1879a2; border-radius:8px; }
+    .rc-active-pred span.rc-active-pred-label { font-size:9px; color:#9bc8df; text-transform:uppercase; font-weight:800; letter-spacing:.06em; }
+    .rc-active-pred strong.rc-active-pred-result { font-size:15px; font-weight:950; letter-spacing:.01em; line-height:1.2; }
+    .rc-active-pred .rc-active-pred-percent { font-size:10px; color:#bcdded; font-weight:650; text-transform:none; }
+    .rc-active-pred-positive { background:linear-gradient(100deg,#092e28,#082b3a); border-color:#149a74; }
+    .rc-active-pred-positive .rc-active-pred-result { color:#4cf4a2; }
+    .rc-active-pred-negative { background:linear-gradient(100deg,#38202b,#17243a); border-color:#c65269; }
+    .rc-active-pred-negative .rc-active-pred-result { color:#ff8292; }
+    .rc-active-pred-missing .rc-active-pred-result { color:#a8bfd1; }
+    .rc-active-actions { display:flex; gap:10px; align-items:end; justify-content:flex-end; min-width:0; }
+    .rc-active-outcome-group { display:flex; flex-direction:column; gap:7px; min-width:0; }
+    .rc-active-outcome-label { font-size:9px; color:#91b6ca; font-weight:800; letter-spacing:.06em; white-space:nowrap; }
+    .rc-active-outcome-buttons { display:flex; gap:7px; }
+    .rc-result-button { background:#075a35; border-color:#1ee283; color:#ddffee; border-radius:6px; padding:9px 10px; font-size:11px; font-weight:850; box-shadow:0 0 10px rgba(19,232,118,.16); white-space:nowrap; }
     .rc-result-lose { background:#752531; border-color:#ff6176; color:#ffe1e5; box-shadow:0 0 10px rgba(255,64,90,.16); }
-    .rc-active-delete { background:#12263d; border:1px solid #53728e; color:#c4dded; border-radius:6px; cursor:pointer; font-size:19px; min-width:35px; }
-    .rc-active-delete:hover { border-color:#ff7989; color:#ff9fab; }
+    .rc-active-delete { min-height:35px; display:inline-flex; gap:6px; align-items:center; justify-content:center; padding:8px 10px; background:#122235; border:1px solid #566b80; color:#e1eaf1; border-radius:6px; cursor:pointer; font-size:11px; font-weight:750; white-space:nowrap; transition:background .18s,border-color .18s,color .18s; }
+    .rc-active-delete svg { width:15px; height:15px; flex-shrink:0; }
+    .rc-active-delete:hover:not(:disabled) { background:#4b1e2b; border-color:#ff7188; color:#ffe0e6; }
+    .rc-active-delete:focus-visible { outline:2px solid #64dfff; outline-offset:3px; }
+    .rc-active-delete:disabled { opacity:.5; cursor:not-allowed; }
     .rc-empty { border:1px dashed #26658b; color:#9cbdcf; padding:26px; text-align:center; border-radius:9px; }
     .rc-count { background:#0c3f62; border-color:#1489c5; color:#87e3ff; }
     .historial-item { background:#0a1a2b; border:1px solid #214b70; border-radius:7px; box-shadow:inset 0 0 10px rgba(13,104,199,.035); }
@@ -973,6 +986,21 @@ export default function App() {
     @media (max-width:1120px) { .rc-nav a { padding:8px 7px; font-size:11px; } .rc-eval-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
     @media (max-width:850px) { .rc-header { flex-wrap:wrap; } .rc-nav { order:3; flex:0 0 100%; justify-content:flex-start; overflow-x:auto; } .rc-header-actions { margin-left:auto; } .rc-overview { grid-template-columns:repeat(3,minmax(0,1fr)); } .rc-active-entry { grid-template-columns:1fr 1fr; } .rc-active-actions { justify-content:flex-end; } }
     @media (max-width:620px) { .rc-header { padding:15px; } .rc-nav a { font-size:10px; } .rc-overview { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; } .rc-stat { padding:12px; min-height:94px; } .rc-stat-label { font-size:9px; } .rc-stat-number { font-size:27px; } .rc-eval-grid { grid-template-columns:repeat(2,minmax(0,1fr)); padding:13px; gap:9px; } .rc-eval-card { padding:12px; } .rc-eval-label { font-size:10px; } .rc-eval-card strong { font-size:23px; } .rc-panel-heading { padding:14px; } .rc-model-footer { padding:12px 14px; } .rc-model-note { margin:0 13px 14px; } .rc-hamster-card { width:148px; min-width:148px; } .rc-active-entry { grid-template-columns:1fr; gap:9px; } .rc-active-actions { justify-content:flex-start; } .rc-active-pred { align-items:start; } .rc-active-map { height:74px; } }
+
+    @media (max-width:1050px) {
+      .rc-active-entry { grid-template-columns:minmax(140px,1fr) minmax(145px,1fr) minmax(165px,1fr); }
+      .rc-active-actions { grid-column:1/-1; justify-content:flex-start; border-top:1px solid #184260; padding-top:9px; }
+    }
+    @media (max-width:850px) {
+      .rc-active-entry { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .rc-active-actions { grid-column:1/-1; }
+    }
+    @media (max-width:560px) {
+      .rc-active-entry { grid-template-columns:1fr; }
+      .rc-active-map { height:76px; }
+      .rc-active-pred { align-items:flex-start; }
+      .rc-active-actions { grid-column:auto; flex-wrap:wrap; gap:12px; }
+    }
 
     /* Three-panel launcher, as in the approved reference */
     .form-grid { grid-template-columns:minmax(290px,1.15fr) minmax(245px,.82fr) minmax(280px,1fr); gap:16px; padding:20px!important; align-items:stretch; }
@@ -1264,7 +1292,12 @@ export default function App() {
               {activas.map(activa => {
                 const mapa = resolverMapa(activa.expedicion);
                 const hamster = HAMSTERS_DEFAULT.find(h => h.nombre === activa.hamster) || HAMSTERS_DEFAULT[0];
-                const tieneProb = activa.probabilidad_ia !== null && activa.probabilidad_ia !== undefined;
+                const probNumerica = Number(activa.probabilidad_ia);
+                const tieneProb = activa.probabilidad_ia !== null && activa.probabilidad_ia !== undefined && activa.probabilidad_ia !== '' && Number.isFinite(probNumerica);
+                // En la API v2, vive_ia se obtiene con el umbral >= 50%.
+                // Si un registro antiguo carece de vive_ia, se recupera desde su probabilidad.
+                const pronostico = String(activa.vive_ia ?? '').trim().toUpperCase();
+                const prediceVive = pronostico === 'SI' ? true : pronostico === 'NO' ? false : probNumerica >= 50;
                 return (
                   <div className="rc-active-entry" key={activa.id}>
                     <div className="rc-active-map" style={mapa.bg ? {backgroundImage:`linear-gradient(90deg,rgba(3,12,26,.24),rgba(3,12,26,.85)),url(${mapa.bg})`} : {}}>
@@ -1274,11 +1307,37 @@ export default function App() {
                       <img src={hamster.img} alt="" loading="lazy" />
                       <div><strong>{activa.hamster}</strong><small>Nivel {activa.nivel || 1} · {activa.stats} stats</small></div>
                     </div>
-                    <div className="rc-active-pred"><span>Predicción IA</span><strong>{tieneProb ? `${activa.probabilidad_ia}%` : 'Sin simular'}</strong></div>
+                    <div className={`rc-active-pred ${!tieneProb ? 'rc-active-pred-missing' : prediceVive ? 'rc-active-pred-positive' : 'rc-active-pred-negative'}`}>
+                      <span className="rc-active-pred-label">Predicción IA</span>
+                      {tieneProb ? (
+                        <>
+                          <strong className="rc-active-pred-result">{prediceVive ? '✓ VIVIRÁ' : '× MORIRÁ'}</strong>
+                          <span className="rc-active-pred-percent">{Number(probNumerica.toFixed(2))}% de supervivencia</span>
+                        </>
+                      ) : (
+                        <strong className="rc-active-pred-result">Sin predicción</strong>
+                      )}
+                    </div>
                     <div className="rc-active-actions">
-                      <button className="rc-result-button rc-result-win" disabled={procesandoId !== null || guardando} onClick={() => finalizar(activa.id, true)}>✓ Vivió</button>
-                      <button className="rc-result-button rc-result-lose" disabled={procesandoId !== null || guardando} onClick={() => finalizar(activa.id, false)}>× Murió</button>
-                      <button className="rc-active-delete" disabled={procesandoId !== null || guardando} onClick={() => confirmarEliminar(activa.id, activa.hamster)} title={`Cancelar expedición de ${activa.hamster}`} aria-label={`Cancelar expedición de ${activa.hamster}`}>⌫</button>
+                      <div className="rc-active-outcome-group">
+                        <span className="rc-active-outcome-label">RESULTADO REAL (AL FINALIZAR)</span>
+                        <div className="rc-active-outcome-buttons">
+                          <button className="rc-result-button rc-result-win" disabled={procesandoId !== null || guardando} onClick={() => finalizar(activa.id, true)}>✓ Vivió</button>
+                          <button className="rc-result-button rc-result-lose" disabled={procesandoId !== null || guardando} onClick={() => finalizar(activa.id, false)}>× Murió</button>
+                        </div>
+                      </div>
+                      <button
+                        className="rc-active-delete"
+                        disabled={procesandoId !== null || guardando}
+                        onClick={() => confirmarEliminar(activa.id, activa.hamster)}
+                        title={`Eliminar el registro pendiente de ${activa.hamster}`}
+                        aria-label={`Eliminar el registro pendiente de ${activa.hamster}`}
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m5 4v7m4-7v7" />
+                        </svg>
+                        Eliminar
+                      </button>
                     </div>
                   </div>
                 );
