@@ -17,6 +17,13 @@ const hoyLocal = () => {
   return `${hoy.getFullYear()}-${dos(hoy.getMonth() + 1)}-${dos(hoy.getDate())}`;
 };
 
+const nombreModeloIA = codigo => ({
+  logistica_mapa: 'Regresión logística · mapa y estadísticas',
+  logistica_porcentaje: 'Regresión logística · porcentaje',
+  random_forest: 'Random Forest',
+  porcentaje_referencia: 'Estimación de referencia',
+}[codigo] || 'Modelo estadístico');
+
 const firmaDatos = datos => JSON.stringify([
   datos.hamster,
   Number(datos.stats),
@@ -1060,7 +1067,7 @@ export default function App() {
           <div className="rc-brand">
             <div className="rc-brand-mark" aria-hidden="true"><img src={HAMSTERS_DEFAULT[0].img} alt="" /></div>
             <div className="rc-brand-copy">
-              <h1>RollerCoin <span className="rc-heading-dot">AI</span><span className="rc-version">v2.0</span></h1>
+              <h1>RollerCoin <span className="rc-heading-dot">AI</span><span className="rc-version">v3.0</span></h1>
               <p>Sistema de predicción de expediciones</p>
             </div>
           </div>
@@ -1115,8 +1122,8 @@ export default function App() {
           <div className="rc-panel-heading">
             <div>
               <div className="rc-eyebrow">ANÁLISIS CON EXPEDICIONES NO VISTAS</div>
-              <h2><span className="rc-title-icon" aria-hidden="true">▣</span> Evaluación real de la IA v2</h2>
-              <p>Resultados de Random Forest frente a la estimación calculada por tu página.</p>
+              <h2><span className="rc-title-icon" aria-hidden="true">▣</span> Evaluación de la IA v3</h2>
+              <p>Resultados del modelo seleccionado frente a la estimación calculada por tu página.</p>
             </div>
             <span className="rc-panel-tag">{estadoModelo === 'entrenado' ? 'Modelo entrenado' : estadoModelo || 'Verificando'}</span>
           </div>
@@ -1238,14 +1245,14 @@ export default function App() {
         {simulacion ? (
           <section className="rc-prediction" aria-label="Resultado de la predicción">
             <div className="rc-prediction-head">
-              <div><div className="rc-eyebrow">PREDICCIÓN RANDOM FOREST</div><h2><span className="rc-title-icon" aria-hidden="true">◉</span> Resultado de la predicción</h2></div>
+              <div><div className="rc-eyebrow">PREDICCIÓN · {nombreModeloIA(simulacion.modelo_seleccionado).toUpperCase()}</div><h2><span className="rc-title-icon" aria-hidden="true">◉</span> Resultado de la predicción</h2></div>
               <span className={`rc-prediction-outcome ${simulacion.vive_ia === 'SI' ? 'is-positive' : 'is-negative'}`}>{simulacion.vive_ia === 'SI' ? 'Supervivencia prevista' : 'Riesgo de derrota'}</span>
             </div>
             <div className="rc-prediction-grid">
               <div className="rc-primary-prob">
                 <div className="rc-primary-label"><span className="rc-kicker-line"/> PROBABILIDAD DE SUPERVIVENCIA · IA</div>
                 <div className="rc-primary-value">{simulacion.probabilidad_ia}<span>%</span></div>
-                <div className="rc-primary-caption">Predicción estadística de Random Forest</div>
+                <div className="rc-primary-caption">Modelo: {nombreModeloIA(simulacion.modelo_seleccionado)}</div>
               </div>
               <div className="rc-prediction-bars">
                 <div className="rc-prediction-row">
@@ -1261,13 +1268,13 @@ export default function App() {
             </div>
             <div className="rc-prediction-footer">
               <span>{simulacion.hamster_con_historial ? 'Historial del hámster disponible' : 'Hámster sin historial previo'}</span>
-              <span>Racha anterior de derrotas: {simulacion.racha_actual ?? 0}</span>
+              <span>{simulacion.racha_utilizada === false ? 'Las rachas no se utilizan para predecir' : `Racha anterior de derrotas: ${simulacion.racha_actual ?? 0}`}</span>
               <span>Son estimaciones estadísticas, no resultados garantizados.</span>
             </div>
           </section>
         ) : (
           <section className="rc-prediction rc-prediction-pending">
-            <div className="rc-prediction-head"><div><div className="rc-eyebrow">RANDOM FOREST · IA V2</div><h2>Resultado de la predicción</h2></div></div>
+            <div className="rc-prediction-head"><div><div className="rc-eyebrow">MODELO PREDICTIVO · IA V3</div><h2>Resultado de la predicción</h2></div></div>
             <div className="rc-pending-inner">
               <div className="rc-pending-icon" aria-hidden="true">◎</div>
               <strong>Lista para predecir</strong>
