@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import GestorHamsters, { CLAVE_HAMSTERS, IMAGEN_GENERICA, cargarHamsters, limpiarHamsters } from './GestorHamsters';
 
 // ==========================================
 // CONFIGURACIÓN DE CONEXIÓN
@@ -125,11 +126,11 @@ const calcularExitoJuego = (stats, dificultadMapa, bonoHamster) => {
 // ==========================================
 // COMPONENTES DE UI
 // ==========================================
-function BuscadorHamster({ valorActual, onSelect }) {
+function BuscadorHamster({ valorActual, onSelect, catalogo }) {
   const [busqueda, setBusqueda] = useState(valorActual);
   const [mostrar, setMostrar] = useState(false);
   useEffect(() => { setBusqueda(valorActual); }, [valorActual]);
-  const filtrados = HAMSTERS_DEFAULT.filter(h => h.nombre.toLowerCase().includes(busqueda.toLowerCase()));
+  const filtrados = catalogo.filter(h => h.nombre.toLowerCase().includes(busqueda.toLowerCase()));
 
   return (
     <div style={{ position: 'relative', zIndex: 50 }}>
@@ -144,7 +145,7 @@ function BuscadorHamster({ valorActual, onSelect }) {
             <div key={h.nombre} onClick={() => { setBusqueda(h.nombre); setMostrar(false); onSelect(h.nombre); }}
               style={{ ...styles.dropdownItem, background: valorActual === h.nombre ? 'rgba(14, 165, 233, 0.15)' : 'transparent', borderLeft: valorActual === h.nombre ? '3px solid #0ea5e9' : '3px solid transparent'}}
             >
-              <img src={h.img} alt="" style={{ width:'22px', height:'22px', objectFit:'contain', marginRight:'10px', verticalAlign:'middle' }} />
+              <img src={h.img || IMAGEN_GENERICA} alt="" style={{ width:'22px', height:'22px', objectFit:'contain', marginRight:'10px', verticalAlign:'middle' }} />
               {h.nombre}
             </div>
           )) : (<div style={styles.dropdownItem}>No se encontró el hámster</div>)}
@@ -186,10 +187,10 @@ function SelectorMapa({ valorActual, onSelect }) {
   );
 }
 
-function RollerCard({ mapa, hamsterName, stats, nivel, probabilidad, viveIA, onAction, actionLabel, isPreview, bonoManual, disabled = false }) {
-  const hamsterObj = HAMSTERS_DEFAULT.find(h => h.nombre === hamsterName) || HAMSTERS_DEFAULT[0];
+function RollerCard({ mapa, hamsterName, stats, nivel, probabilidad, viveIA, onAction, actionLabel, isPreview, bonoManual, catalogo, disabled = false }) {
+  const hamsterObj = catalogo.find(h => h.nombre === hamsterName) || catalogo[0];
   const colorBoton = isPreview ? 'linear-gradient(180deg,#048ddb,#0866ab)' : 'linear-gradient(180deg,#174979,#0d365d)';
-  const imagenCalculada = isPreview || hamsterName ? getImagenEvolucion(hamsterObj.slug, nivel) : '';
+  const imagenCalculada = hamsterObj.slug ? getImagenEvolucion(hamsterObj.slug, nivel) : (hamsterObj.img || IMAGEN_GENERICA);
   const bonoAMostrar = bonoManual !== undefined ? bonoManual : hamsterObj.bono;
   const tienePrediccion = probabilidad !== null && probabilidad !== undefined && probabilidad !== '' && Number.isFinite(Number(probabilidad));
 
@@ -226,7 +227,7 @@ function RollerCard({ mapa, hamsterName, stats, nivel, probabilidad, viveIA, onA
           )}
         </div>
         
-        <img src={imagenCalculada} alt={hamsterName} style={styles.rcHamsterImg} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = hamsterObj.img; }} />
+        <img src={imagenCalculada} alt={hamsterName} style={styles.rcHamsterImg} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = hamsterObj.img || IMAGEN_GENERICA; }} />
         
         {tienePrediccion ? (
           <div style={styles.rcTimerPill}>
@@ -254,6 +255,8 @@ function RollerCard({ mapa, hamsterName, stats, nivel, probabilidad, viveIA, onA
 // APLICACIÓN PRINCIPAL
 // ==========================================
 export default function App() {
+  const [personalizados, setPersonalizados] = useState(() => cargarHamsters(HAMSTERS_DEFAULT));
+  const catalogo = [...HAMSTERS_DEFAULT, ...personalizados];
   const [activas, setActivas] = useState([]);
   const [historial, setHistorial] = useState([]);
   const [metricas, setMetricas] = useState(null);
@@ -288,7 +291,7 @@ export default function App() {
     try {
       const guardado = JSON.parse(localStorage.getItem('rc_expeditions_form') || '{}');
       const combinado = { ...formPorDefecto, ...guardado, fecha: hoy };
-      const h = HAMSTERS_DEFAULT.find(x => x.nombre === combinado.hamster) || HAMSTERS_DEFAULT[0];
+      const h = catalogo.find(x => x.nombre === combinado.hamster) || HAMSTERS_DEFAULT[0];
       const mapa = MAPAS_OFICIALES.find(x => x.valor === combinado.expedicion) || MAPAS_OFICIALES[0];
       const nivel = Math.max(1, Math.min(50, Number(combinado.nivel) || h.nivelInicial || 1));
       const bono = Number.isFinite(Number(combinado.bono)) ? Number(combinado.bono) : h.bono;
@@ -306,6 +309,26 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('rc_expeditions_form', JSON.stringify(form));
   }, [form]);
+
+  const guardarCatalogo = (datos) => {
+    const limpios = limpiarHamsters(datos, HAMSTERS_DEFAULT);
+    try {
+      localStorage.setItem(CLAVE_HAMSTERS, JSON.stringify(limpios));
+      setPersonalizados(limpios);
+    } catch (error) {
+      setMensajeOperacion('No se pudieron guardar los hámsteres en este navegador: ' + error.message);
+    }
+  };
+
+  const seleccionarPersonalizado = (h) => {
+    recalcularTodoConObjeto(h, h.nivelInicial, form.expedicion, h.bono, true);
+  };
+
+  const eliminarPersonalizado = (nombre) => {
+    if (form.hamster === nombre) {
+      recalcularTodoConObjeto(HAMSTERS_DEFAULT[0], HAMSTERS_DEFAULT[0].nivelInicial, form.expedicion, HAMSTERS_DEFAULT[0].bono, true);
+    }
+  };
 
   // Uso sin inicio de sesión: Supabase aplica los permisos RLS de la base de datos.
   // Quitar el login de React no concede permisos si RLS los restringe.
@@ -344,7 +367,11 @@ export default function App() {
   useEffect(() => { cargarDashboard(); }, []);
 
   const recalcularTodo = (nombreH, nivelActual, mapaValor, bonoManual, esNuevoHamster = false) => {
-    const hObj = HAMSTERS_DEFAULT.find(x => x.nombre === nombreH) || HAMSTERS_DEFAULT[0];
+    const hObj = catalogo.find(x => x.nombre === nombreH) || HAMSTERS_DEFAULT[0];
+    recalcularTodoConObjeto(hObj, nivelActual, mapaValor, bonoManual, esNuevoHamster);
+  };
+
+  const recalcularTodoConObjeto = (hObj, nivelActual, mapaValor, bonoManual, esNuevoHamster = false) => {
     const mObj = MAPAS_OFICIALES.find(m => m.valor === mapaValor) || MAPAS_OFICIALES[0];
     
     let lvl = parseInt(nivelActual) || 1;
@@ -1165,11 +1192,11 @@ export default function App() {
             </div>
             <div className="rc-roster-scroll">
               {resumenHamsters.map(h => {
-                const hInfo = HAMSTERS_DEFAULT.find(x => x.nombre === h.hamster) || HAMSTERS_DEFAULT[0];
+                const hInfo = catalogo.find(x => x.nombre === h.hamster) || HAMSTERS_DEFAULT[0];
                 const winrate = Math.max(0, Math.min(100, Number(h.winrate) || 0));
                 return (
                   <button type="button" key={h.hamster} className={`rc-hamster-card ${winrate >= 60 ? 'rc-hamster-good' : winrate >= 45 ? 'rc-hamster-medium' : 'rc-hamster-low'}`} onClick={() => recalcularTodo(h.hamster, form.nivel || 1, form.expedicion, undefined, true)} title={`Preparar expedición con ${h.hamster}`} >
-                    <div className="rc-hamster-top"><span className="rc-hamster-avatar"><img src={hInfo.img} alt="" loading="lazy" /></span><span className="rc-hamster-total">{h.total} envíos</span></div>
+                    <div className="rc-hamster-top"><span className="rc-hamster-avatar"><img src={hInfo.img || IMAGEN_GENERICA} alt="" loading="lazy" /></span><span className="rc-hamster-total">{h.total} envíos</span></div>
                     <div className="rc-hamster-name" title={h.hamster}>{h.hamster}</div>
                     <div className="rc-hamster-win"><strong>{h.winrate}%</strong><span>victorias</span></div>
                     <div className="rc-track rc-track-small"><div className="rc-track-fill rc-fill-win" style={{width:`${winrate}%`}} /></div>
@@ -1192,7 +1219,8 @@ export default function App() {
           <div style={styles.controlPanel}>
             
             <label style={styles.label}>HÁMSTER</label>
-            <BuscadorHamster valorActual={form.hamster} onSelect={(nombre) => recalcularTodo(nombre, form.nivel || 1, form.expedicion, undefined, true)} />
+            <BuscadorHamster valorActual={form.hamster} catalogo={catalogo} onSelect={(nombre) => recalcularTodo(nombre, form.nivel || 1, form.expedicion, undefined, true)} />
+            <GestorHamsters defaults={HAMSTERS_DEFAULT} personalizados={personalizados} onChange={guardarCatalogo} onSeleccionar={seleccionarPersonalizado} onEliminar={eliminarPersonalizado} />
 
             <label style={styles.label}>MAPA DE EXPEDICIÓN</label>
             <SelectorMapa valorActual={form.expedicion} onSelect={(mapa) => recalcularTodo(form.hamster, form.nivel || 1, mapa, form.bono, false)} />
@@ -1221,6 +1249,7 @@ export default function App() {
           <div className="card-container">
             <RollerCard 
               mapa={mapaSeleccionado} 
+              catalogo={catalogo}
               hamsterName={form.hamster} 
               stats={form.stats}
               nivel={form.nivel} 
@@ -1291,7 +1320,7 @@ export default function App() {
             <div className="rc-active-list">
               {activas.map(activa => {
                 const mapa = resolverMapa(activa.expedicion);
-                const hamster = HAMSTERS_DEFAULT.find(h => h.nombre === activa.hamster) || HAMSTERS_DEFAULT[0];
+                const hamster = catalogo.find(h => h.nombre === activa.hamster) || HAMSTERS_DEFAULT[0];
                 const probNumerica = Number(activa.probabilidad_ia);
                 const tieneProb = activa.probabilidad_ia !== null && activa.probabilidad_ia !== undefined && activa.probabilidad_ia !== '' && Number.isFinite(probNumerica);
                 // En la API v2, vive_ia se obtiene con el umbral >= 50%.
@@ -1304,7 +1333,7 @@ export default function App() {
                       <span>{mapa.nombre}</span>
                     </div>
                     <div className="rc-active-identity">
-                      <img src={hamster.img} alt="" loading="lazy" />
+                      <img src={hamster.img || IMAGEN_GENERICA} alt="" loading="lazy" />
                       <div><strong>{activa.hamster}</strong><small>Nivel {activa.nivel || 1} · {activa.stats} stats</small></div>
                     </div>
                     <div className={`rc-active-pred ${!tieneProb ? 'rc-active-pred-missing' : prediceVive ? 'rc-active-pred-positive' : 'rc-active-pred-negative'}`}>
@@ -1356,7 +1385,7 @@ export default function App() {
               {historial.map(item => (
                 <div key={item.id} className={`historial-item ${item.finalizado ? 'rc-history-win' : 'rc-history-lose'}`}>
                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                      <img src={(HAMSTERS_DEFAULT.find(h => h.nombre === item.hamster) || HAMSTERS_DEFAULT[0]).img} style={{ height: '40px', objectFit: 'contain' }} alt=""/>
+                      <img src={(catalogo.find(h => h.nombre === item.hamster) || HAMSTERS_DEFAULT[0]).img || IMAGEN_GENERICA} style={{ height: '40px', objectFit: 'contain' }} alt=""/>
                       <div>
                         <div style={{ color: 'white', fontWeight: 'bold', fontSize: '15px' }}>{item.hamster}</div>
                         <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: '3px' }}>Fecha: {item.fecha}</div>
