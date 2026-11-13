@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import ImportadorExcel from './ImportadorExcel';
+import { prepararPrediccionActiva } from './expedicionesActivas';
 import { nivelDesdeStats, statsDesdeNivel, limitesStats, ajustarStatsAlRango } from './statsNivel';
 
 // ==========================================
@@ -277,6 +278,7 @@ export default function App() {
   const [errorDashboard, setErrorDashboard] = useState('');
   const [mensajeOperacion, setMensajeOperacion] = useState('');
   const [expedicionDesdeExcel, setExpedicionDesdeExcel] = useState(null);
+  const [expedicionActivaParaPredecir, setExpedicionActivaParaPredecir] = useState(null);
   const operacionEnCurso = useRef(false);
   const versionSimulacion = useRef(0);
 
@@ -360,6 +362,7 @@ export default function App() {
   useEffect(() => { cargarDashboard(); }, []);
 
   const seleccionarExpedicionExcel = (fila) => {
+    setExpedicionActivaParaPredecir(null);
     const hamster = HAMSTERS_DEFAULT.find(h => h.nombre === fila.hamster);
     const mapa = MAPAS_OFICIALES.find(m => m.valor === fila.expedicion);
     const stats = Number(fila.stats);
@@ -395,7 +398,32 @@ export default function App() {
     document.getElementById('simulacion')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const cargarExpedicionActivaParaIA = (activa) => {
+    try {
+      const pendiente = prepararPrediccionActiva(activa, HAMSTERS_DEFAULT, MAPAS_OFICIALES);
+      setExpedicionDesdeExcel(null);
+      setExpedicionActivaParaPredecir(pendiente);
+      setForm(prev => ({
+        ...prev,
+        fecha: pendiente.fecha,
+        hamster: pendiente.hamster,
+        nivel: pendiente.nivel,
+        stats: pendiente.stats,
+        expedicion: pendiente.expedicion,
+        porcentaje: pendiente.porcentaje,
+        bono: pendiente.bono,
+      }));
+      versionSimulacion.current += 1;
+      setSimulacion(null);
+      setMensajeOperacion('Expedición activa #' + pendiente.id + ' cargada arriba. Pulsa «Calcular probabilidad» para guardar su predicción en el registro existente.');
+      document.getElementById('simulacion')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+      setMensajeOperacion('No se pudo preparar la predicción: ' + error.message);
+    }
+  };
+
   const recalcularTodo = (nombreH, nivelActual, mapaValor, bonoManual, esNuevoHamster = false) => {
+    setExpedicionActivaParaPredecir(null);
     setExpedicionDesdeExcel(null);
     const hObj = HAMSTERS_DEFAULT.find(x => x.nombre === nombreH) || HAMSTERS_DEFAULT[0];
     const mObj = MAPAS_OFICIALES.find(m => m.valor === mapaValor) || MAPAS_OFICIALES[0];
@@ -416,7 +444,13 @@ export default function App() {
 
   const manejarNivel = (e) => {
     let valor = parseInt(e.target.value, 10);
-    if (isNaN(valor)) { setForm({...form, nivel: ''}); return; }
+    if (isNaN(valor)) {
+      setExpedicionActivaParaPredecir(null);
+      versionSimulacion.current += 1;
+      setSimulacion(null);
+      setForm({...form, nivel: ''});
+      return;
+    }
     if (valor > 50) valor = 50;
     if (valor < 1) valor = 1;
     recalcularTodo(form.hamster, valor, form.expedicion, form.bono, false);
@@ -425,10 +459,12 @@ export default function App() {
   const bloquearRegistroExcel = Boolean(expedicionDesdeExcel && (
     expedicionDesdeExcel.finalizado !== null || expedicionDesdeExcel.estado !== 'nueva'
   ));
+  const bloquearNuevoRegistro = bloquearRegistroExcel || Boolean(expedicionActivaParaPredecir);
   const hamsterDeFormulario = HAMSTERS_DEFAULT.find(h => h.nombre === form.hamster) || HAMSTERS_DEFAULT[0];
   const rangoStats = limitesStats(hamsterDeFormulario.baseStats);
 
   const ponerStats = (stats) => {
+    setExpedicionActivaParaPredecir(null);
     setExpedicionDesdeExcel(null);
     const nivel = nivelDesdeStats(stats, hamsterDeFormulario.baseStats);
     const mapa = resolverMapa(form.expedicion);
@@ -472,6 +508,8 @@ export default function App() {
   const simular = async () => {
     if (simulando) return;
     const versionActual = ++versionSimulacion.current;
+    const pendienteSeleccionada = expedicionActivaParaPredecir;
+    const firmaOriginal = firmaDatos(form);
     setSimulacion(null);
     setSimulando(true);
     setMensajeOperacion('');
@@ -507,7 +545,33 @@ export default function App() {
         throw new Error(detalle || datos.error || `Error HTTP ${respuesta.status}`);
       }
       if (versionActual === versionSimulacion.current) {
-        setSimulacion({ ...datos, _firma: firmaDatos(form) });
+        setSimulacion({ ...datos, _firma: firmaOriginal });
+        if (pendienteSeleccionada) {
+          // Una expedición activa ya existe en Supabase: actualizar su predicción,
+          // jamás insertar otro registro ni modificar el resultado real.
+          const { data: actualizadas, error: errorGuardar } = await supabase
+            .from('expediciones')
+            .update({ probabilidad_ia: datos.probabilidad_ia, vive_ia: datos.vive_ia })
+            .eq('id', pendienteSeleccionada.id)
+            .is('finalizado', null)
+            .is('probabilidad_ia', null)
+            .eq('hamster', pendienteSeleccionada.hamster)
+            .eq('stats', pendienteSeleccionada.stats)
+            .eq('expedicion', pendienteSeleccionada.expedicion)
+            .select('*');
+          if (errorGuardar) {
+            setMensajeOperacion('La IA calculó la predicción, pero no se pudo guardarla en la expedición #' +
+              pendienteSeleccionada.id + ': ' + errorGuardar.message);
+          } else if (!actualizadas?.length) {
+            setMensajeOperacion('La predicción se calculó, pero la expedición #' +
+              pendienteSeleccionada.id + ' ya cambió, fue finalizada o recibió otra predicción. No se sobrescribió nada.');
+            void cargarDashboard();
+          } else {
+            setActivas(prev => prev.map(item => item.id === pendienteSeleccionada.id ? actualizadas[0] : item));
+            setMensajeOperacion('Predicción IA guardada en la expedición activa #' + pendienteSeleccionada.id +
+              '. No se creó una expedición duplicada.');
+          }
+        }
       }
     } catch (error) {
       if (versionActual === versionSimulacion.current) {
@@ -523,8 +587,10 @@ export default function App() {
   const confirmarGuardar = (e) => {
     e?.preventDefault();
     if (operacionEnCurso.current) return;
-    if (bloquearRegistroExcel) {
-      setMensajeOperacion('Esta fila contiene un resultado real o ya existe en Supabase. Para guardarla correctamente, usa el selector de Excel.');
+    if (bloquearNuevoRegistro) {
+      setMensajeOperacion(expedicionActivaParaPredecir
+        ? 'La expedición ya está registrada. Pulsa «Calcular probabilidad» para actualizar su predicción sin duplicarla.'
+        : 'Esta fila contiene un resultado real o ya existe en Supabase. Utiliza el selector de Excel.');
       return;
     }
     const mapaSelec = resolverMapa(form.expedicion).nombre;
@@ -538,7 +604,7 @@ export default function App() {
   };
 
   const ejecutarGuardar = async () => {
-    if (operacionEnCurso.current || bloquearRegistroExcel) return;
+    if (operacionEnCurso.current || bloquearNuevoRegistro) return;
     operacionEnCurso.current = true;
     setGuardando(true);
     setMensajeOperacion('');
@@ -1066,6 +1132,12 @@ export default function App() {
     .rc-active-pred-negative { background:linear-gradient(100deg,#38202b,#17243a); border-color:#c65269; }
     .rc-active-pred-negative .rc-active-pred-result { color:#ff8292; }
     .rc-active-pred-missing .rc-active-pred-result { color:#a8bfd1; }
+    .rc-active-calculate {
+      border:1px solid #32b8e5;background:#0b4968;color:#dcf6ff;
+      padding:7px 10px;border-radius:7px;font-size:11px;font-weight:800;
+      cursor:pointer;white-space:nowrap;
+    }
+    .rc-active-calculate:hover { background:#126b8e;border-color:#78ddfa; }
     .rc-active-actions { display:flex; gap:10px; align-items:end; justify-content:flex-end; min-width:0; }
     .rc-active-outcome-group { display:flex; flex-direction:column; gap:7px; min-width:0; }
     .rc-active-outcome-label { font-size:9px; color:#91b6ca; font-weight:800; letter-spacing:.06em; white-space:nowrap; }
@@ -1297,6 +1369,17 @@ export default function App() {
                 onSeleccionar={seleccionarExpedicionExcel} />
             </div>
           </div>
+          {expedicionActivaParaPredecir && (
+            <div role="status" style={{
+              margin:'8px 20px 0',padding:'12px 15px',border:'1px solid #268ac0',borderRadius:9,
+              background:'#10334b',color:'#c8efff',fontSize:12,lineHeight:1.65
+            }}>
+              <strong style={{color:'#78e2ff'}}>Expedición activa #{expedicionActivaParaPredecir.id} cargada.</strong>
+              {' '}Sus datos originales ya están en el formulario. Pulsa «Calcular probabilidad»:
+              la IA se guardará en esta misma expedición. No se creará otro registro.
+              {' '}El registro sigue pendiente y sus resultados reales no se modificarán.
+            </div>
+          )}
           {expedicionDesdeExcel && (
             <div role="status" style={{margin:'8px 20px 0',padding:'12px 15px',
               border:'1px solid #3f91b0',borderRadius:9,background:'#11334a',
@@ -1359,7 +1442,7 @@ export default function App() {
               probabilidad={simulacion ? simulacion.probabilidad_ia : null}
               viveIA={simulacion ? simulacion.vive_ia : null}
               onAction={confirmarGuardar}
-              disabled={bloquearRegistroExcel || !statsValidos || guardando || procesandoId !== null}
+              disabled={bloquearNuevoRegistro || !statsValidos || guardando || procesandoId !== null}
               actionLabel={guardando ? 'GUARDANDO...' : 'Registrar expedición'}
               isPreview={true}
               bonoManual={form.bono} 
@@ -1447,7 +1530,17 @@ export default function App() {
                           <span className="rc-active-pred-percent">{Number(probNumerica.toFixed(2))}% de supervivencia</span>
                         </>
                       ) : (
-                        <strong className="rc-active-pred-result">Sin predicción</strong>
+                        <>
+                          <strong className="rc-active-pred-result">Sin predicción</strong>
+                          <button type="button"
+                            className="rc-active-calculate"
+                            disabled={simulando || guardando || procesandoId !== null}
+                            onClick={() => cargarExpedicionActivaParaIA(activa)}
+                            title={'Cargar los datos de ' + activa.hamster + ' para predecir'}
+                            aria-label={'Calcular predicción IA para ' + activa.hamster}>
+                            ↗ Calcular IA
+                          </button>
+                        </>
                       )}
                     </div>
                     <div className="rc-active-actions">
