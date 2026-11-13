@@ -247,16 +247,27 @@ export function planificarImportacion(validas, existentes) {
     while ((match = matching((a,b) => estado(a) === estado(b)))) {
       ignorar.push({ ...rows[match[0]], motivo:'Ya registrada' });
     }
-    while ((match = matching((a,b) => estado(a) !== 'pendiente' && estado(b) === 'pendiente'))) {
-      actualizar.push({ id:previos[match[1]].id, filaExcel:rows[match[0]].filaExcel, finalizado:rows[match[0]].finalizado });
-    }
-    while ((match = matching((a,b) => estado(a) === 'pendiente' && estado(b) !== 'pendiente'))) {
-      ignorar.push({ ...rows[match[0]], motivo:'La web ya tiene un resultado final' });
+    // Nunca asignar un resultado concreto a una predicción previa al azar.
+    // Si sobran varios resultados diferentes y faltan envíos pendientes,
+    // la correspondencia es ambigua: pedir revisión manual.
+    const restantesPrevios = previos.filter((_,j) => !usados.has(j));
+    const restantesExcel = rows.filter((_,i) => !usadosExcel.has(i));
+    const resultadosFinales = new Set(restantesExcel.filter(r => estado(r) !== 'pendiente').map(estado));
+    const emparejamientoSeguro = restantesPrevios.every(r => estado(r) === 'pendiente')
+      && resultadosFinales.size <= 1;
+    if (emparejamientoSeguro) {
+      while ((match = matching((a,b) => estado(a) !== 'pendiente' && estado(b) === 'pendiente'))) {
+        actualizar.push({
+          id:previos[match[1]].id, filaExcel:rows[match[0]].filaExcel,
+          finalizado:rows[match[0]].finalizado
+        });
+      }
     }
     for (let i = 0; i < rows.length; i++) {
       if (usadosExcel.has(i)) continue;
-      if (previos.some((_,k) => !usados.has(k))) {
-        conflictos.push({ ...rows[i], motivo:'Coincide fecha/hámster/mapa/stats pero difiere el resultado' });
+      if (previos.some((_,k) => !usados.has(k)) || !emparejamientoSeguro) {
+        conflictos.push({ ...rows[i],
+          motivo:'Coincidencia ambigua: no se puede identificar con seguridad este envío o su resultado' });
       } else {
         insertar.push(rows[i]);
       }
