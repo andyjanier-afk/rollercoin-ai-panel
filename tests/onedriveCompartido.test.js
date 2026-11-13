@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validarEnlaceOneDrive, tokenCompartido } from '../src/onedriveCompartido.js';
+import { validarEnlaceOneDrive, tokenCompartido, enlacesCompartidosCandidatos } from '../src/onedriveCompartido.js';
 
 test('acepta un enlace compartido de OneDrive personal', () => {
   const url='https://onedrive.live.com/:x:/g/personal/12345/ABCDEFGHIJKLMNOP?rtime=x';
@@ -25,4 +25,18 @@ test('rechaza URL no segura o de un dominio parecido', () => {
     '',
     'https://user:secret@onedrive.live.com/file',
   ])assert.throws(()=>validarEnlaceOneDrive(url));
+});
+
+
+test('prefiere el enlace corto legítimo que incluye redeem',()=>{
+ const short='https://1drv.ms/x/c/example/share?e=abcdef';
+ const encoded=Buffer.from(short,'utf8').toString('base64url');
+ const long='https://onedrive.live.com/:x:/g/personal/example/share?redeem='+encoded+'&rtime=xyz';
+ assert.deepEqual(enlacesCompartidosCandidatos(long),[short,long]);
+});
+
+test('no acepta destinos ajenos dentro de redeem',()=>{
+ const malicious=Buffer.from('https://malicioso.example/robo','utf8').toString('base64url');
+ const long='https://onedrive.live.com/:x:/g/personal/example/share?redeem='+malicious;
+ assert.deepEqual(enlacesCompartidosCandidatos(long),[long]);
 });

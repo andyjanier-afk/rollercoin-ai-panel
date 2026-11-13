@@ -114,35 +114,48 @@ export async function descargarExcelDeOneDrive(id,nombre) {
 }
 
 
-// Abre un Excel que pertenece a otra persona mediante el enlace que compartió.
-// No aparece necesariamente en /me/drive/root/search.
-import { tokenCompartido } from './onedriveCompartido';
+// Abre un Excel compartido usando Microsoft Graph. Algunos links largos
+// contienen el enlace 1drv.ms original dentro del parámetro redeem.
+import { enlacesCompartidosCandidatos, tokenCompartido } from './onedriveCompartido';
+
+function mensajeGraph(error) {
+  const texto=String(error?.message||'');
+  if (/HTTP Error 400|request URI is invalid|General Exception While Processing/i.test(texto))
+    return 'Microsoft rechazó el formato del enlace (HTTP 400).';
+  return texto.length>250 ? texto.slice(0,250) : texto;
+}
 
 export async function descargarExcelCompartido(enlace) {
-  const id = tokenCompartido(enlace);
-  const ruta = 'https://graph.microsoft.com/v1.0/shares/' + encodeURIComponent(id) + '/driveItem';
-  let item;
-  try {
-    item = await (await graph(ruta)).json();
-  } catch (error) {
-    throw new Error(
-      'Microsoft no pudo abrir el enlace compartido (' + error.message +
-      '). Abre primero el enlace en OneDrive con esta misma cuenta y verifica que el propietario te haya dado permiso de lectura.'
-    );
+  const candidatas = enlacesCompartidosCandidatos(enlace);
+  let ultimoError = '';
+  for (const url of candidatas) {
+    const id=tokenCompartido(url);
+    const ruta='https://graph.microsoft.com/v1.0/shares/'+encodeURIComponent(id)+'/driveItem';
+    try {
+      const response=await graph(ruta);
+      const item=await response.json();
+      const nombre=String(item.name||'').trim();
+      if (!item.file || !/\.(xlsx|xlsm)$/i.test(nombre))
+        throw Error('El enlace no apunta directamente a un archivo .xlsx o .xlsm.');
+      if (Number(item.size)>15*1024*1024) throw Error('El Excel supera el límite de 15 MB.');
+      // Descarga la versión vigente, sin ejecutar VBA ni grabar en OneDrive.
+      const archivo=await graph(ruta+'/content');
+      const bytes=await archivo.blob();
+      if (!bytes.size || bytes.size>15*1024*1024)
+        throw Error('No se pudo descargar el Excel o supera los 15 MB.');
+      return new File([bytes],nombre,{
+        type: nombre.toLowerCase().endsWith('.xlsm')
+          ? 'application/vnd.ms-excel.sheet.macroEnabled.12'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+    } catch (e) {
+      // Nunca revelar la URL/token compartido completo en mensajes de error.
+      ultimoError=mensajeGraph(e);
+    }
   }
-  const nombre = String(item.name || '').trim();
-  if (!item.file || !/\.(xlsx|xlsm)$/i.test(nombre))
-    throw Error('El enlace no apunta directamente a un archivo Excel .xlsx o .xlsm.');
-  if (Number(item.size) > 15 * 1024 * 1024)
-    throw Error('El archivo supera el límite de 15 MB.');
-  // Leer por Graph usando el token delegado, no exponerlo en una URL pública.
-  const descarga = await graph(ruta + '/content');
-  const blob = await descarga.blob();
-  if (!blob.size || blob.size > 15 * 1024 * 1024)
-    throw Error('No se pudo obtener el Excel o supera los 15 MB.');
-  return new File([blob], nombre, {
-    type: nombre.toLowerCase().endsWith('.xlsm')
-      ? 'application/vnd.ms-excel.sheet.macroEnabled.12'
-      : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  });
+  throw Error(
+    ultimoError+
+    ' Abre el enlace en OneDrive con la misma cuenta Microsoft y confirma que tienes acceso. '+
+    'Si sigue fallando, pide al propietario un enlace de lectura nuevo o acceso directo a tu cuenta.'
+  );
 }
