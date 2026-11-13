@@ -276,6 +276,7 @@ export default function App() {
   const [procesandoId, setProcesandoId] = useState(null);
   const [errorDashboard, setErrorDashboard] = useState('');
   const [mensajeOperacion, setMensajeOperacion] = useState('');
+  const [expedicionDesdeExcel, setExpedicionDesdeExcel] = useState(null);
   const operacionEnCurso = useRef(false);
   const versionSimulacion = useRef(0);
 
@@ -358,7 +359,43 @@ export default function App() {
 
   useEffect(() => { cargarDashboard(); }, []);
 
+  const seleccionarExpedicionExcel = (fila) => {
+    const hamster = HAMSTERS_DEFAULT.find(h => h.nombre === fila.hamster);
+    const mapa = MAPAS_OFICIALES.find(m => m.valor === fila.expedicion);
+    const stats = Number(fila.stats);
+    if (!hamster || !mapa || !Number.isInteger(stats) ||
+        stats < hamster.baseStats || stats > hamster.baseStats + 49) {
+      setMensajeOperacion('Los datos de esta fila no coinciden con el catálogo. No se modificó el formulario.');
+      return;
+    }
+    // Respetar la fecha, el mapa, los STATS y el porcentaje que registró el Excel.
+    // El bono no figura en ese archivo; se conserva el bono propio del hámster.
+    setForm(prev => ({
+      ...prev,
+      fecha: fila.fecha,
+      hamster: hamster.nombre,
+      nivel: stats - hamster.baseStats + 1,
+      stats,
+      expedicion: mapa.valor,
+      porcentaje: Number(fila.porcentaje),
+      bono: hamster.bono,
+    }));
+    setExpedicionDesdeExcel({
+      filaExcel: fila.filaExcel,
+      finalizado: fila.finalizado,
+      fecha: fila.fecha,
+      hamster: hamster.nombre,
+      stats,
+      expedicion: mapa.valor,
+    });
+    versionSimulacion.current += 1;
+    setSimulacion(null);
+    setMensajeOperacion('Fila ' + fila.filaExcel + ' cargada en el formulario. Revisa los datos antes de registrarla.');
+    document.getElementById('simulacion')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const recalcularTodo = (nombreH, nivelActual, mapaValor, bonoManual, esNuevoHamster = false) => {
+    setExpedicionDesdeExcel(null);
     const hObj = HAMSTERS_DEFAULT.find(x => x.nombre === nombreH) || HAMSTERS_DEFAULT[0];
     const mObj = MAPAS_OFICIALES.find(m => m.valor === mapaValor) || MAPAS_OFICIALES[0];
     
@@ -388,6 +425,7 @@ export default function App() {
   const rangoStats = limitesStats(hamsterDeFormulario.baseStats);
 
   const ponerStats = (stats) => {
+    setExpedicionDesdeExcel(null);
     const nivel = nivelDesdeStats(stats, hamsterDeFormulario.baseStats);
     const mapa = resolverMapa(form.expedicion);
     setForm(prev => ({
@@ -1247,9 +1285,23 @@ export default function App() {
             <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
               <span className="rc-section-aside">Selecciona un hámster y calcula su probabilidad</span>
               <ImportadorExcel supabase={supabase} catalogo={HAMSTERS_DEFAULT}
-                onImportado={() => { void cargarDashboard(); }} />
+                onImportado={() => { void cargarDashboard(); }}
+                onSeleccionar={seleccionarExpedicionExcel} />
             </div>
           </div>
+          {expedicionDesdeExcel && (
+            <div role="status" style={{margin:'8px 20px 0',padding:'12px 15px',
+              border:'1px solid #3f91b0',borderRadius:9,background:'#11334a',
+              color:'#c6eaf7',fontSize:12,lineHeight:1.65}}>
+              <strong style={{color:'#8ce3fa'}}>Fila {expedicionDesdeExcel.filaExcel} del Excel seleccionada.</strong>
+              {' '}Se copiaron fecha, hámster, mapa, STATS y porcentaje al formulario; todavía no se registró nada.
+              {expedicionDesdeExcel.finalizado !== null
+                ? ' El Excel ya tiene el resultado real (' + (expedicionDesdeExcel.finalizado ? 'VIVIÓ' : 'MURIÓ') +
+                  '). Para guardarlo con ese resultado, utiliza «Registrar solo esta fila» en el selector de Excel.'
+                : ' Esta expedición no tiene resultado real; puedes registrarla como pendiente desde el formulario.'}
+              {' '}El bono del Excel no existe como columna: se utilizó el bono propio del hámster.
+            </div>
+          )}
           <div className="form-grid" style={styles.contenedorFormulario}>
           <div style={styles.controlPanel}>
             
