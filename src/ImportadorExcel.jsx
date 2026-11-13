@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { leerExpedicionesExcel, planificarImportacion, consultarRegistrosExistentes, validarFilaExcel } from './importacionExcel';
 import { ordenarExcelRecientePrimero } from './expedicionesActivas';
-import { oneDriveConfigurado, conectarOneDrive, recibirSesionOneDrive, conectadoOneDrive, desconectarOneDrive, buscarExcelEnOneDrive, descargarExcelDeOneDrive } from './onedrive';
+import { oneDriveConfigurado, conectarOneDrive, recibirSesionOneDrive, conectadoOneDrive, desconectarOneDrive, buscarExcelEnOneDrive, descargarExcelDeOneDrive, descargarExcelCompartido } from './onedrive';
 
 const ink='#eaf7ff', muted='#a9c7d9', green='#7be6b4', red='#ffadb6', cyan='#8fe4fb', gold='#ffd492';
 const btn=(primary=false)=>({
@@ -51,6 +51,12 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
   const [onedriveCargando,setOnedriveCargando]=useState(false);
   const [onedriveArchivo,setOnedriveArchivo]=useState(null);
   const [onedriveBusqueda,setOnedriveBusqueda]=useState('expediciones');
+  const [enlaceCompartido,setEnlaceCompartido]=useState(()=>{
+    try {return localStorage.getItem('rc_excel_compartido_v1') || '';} catch {return '';}
+  });
+  const [recordarEnlace,setRecordarEnlace]=useState(()=>{
+    try {return Boolean(localStorage.getItem('rc_excel_compartido_v1'));} catch {return false;}
+  });
 
   useEffect(()=>{
     let mounted=true;
@@ -121,7 +127,38 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
 
   async function actualizarOneDrive() {
     if(!onedriveArchivo)return;
+    if(onedriveArchivo.tipo==='compartido'){
+      setEnlaceCompartido(onedriveArchivo.enlace);
+      setOnedriveCargando(true);setError('');
+      try {
+        const file=await descargarExcelCompartido(onedriveArchivo.enlace);
+        await analizarArchivo(file);
+        setAviso('Archivo compartido actualizado desde OneDrive.');
+      }catch(e){setError('No se pudo actualizar el enlace compartido: '+e.message);}
+      finally{setOnedriveCargando(false);}
+      return;
+    }
     await cargarOneDrive(onedriveArchivo);
+  }
+
+  async function cargarEnlaceCompartido() {
+    if(onedriveCargando)return;
+    setOnedriveCargando(true);
+    setError('');
+    try {
+      const file=await descargarExcelCompartido(enlaceCompartido);
+      if(recordarEnlace) {
+        try {localStorage.setItem('rc_excel_compartido_v1',enlaceCompartido.trim());} catch {}
+      } else {
+        try {localStorage.removeItem('rc_excel_compartido_v1');} catch {}
+      }
+      setOnedriveArchivo({tipo:'compartido',enlace:enlaceCompartido.trim(),name:file.name});
+      await analizarArchivo(file);
+      setAviso('Excel compartido cargado desde OneDrive. Elige las filas que deseas utilizar.');
+    } catch(e) {
+      setError('No se pudo abrir el enlace compartido: '+e.message+
+        ' Si el archivo requiere iniciar sesión con otra cuenta, solicita al propietario acceso para tu cuenta Microsoft.');
+    } finally {setOnedriveCargando(false);}
   }
 
   async function confirmarFecha(row) {
@@ -246,7 +283,7 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
             <div>
               <strong style={{color:cyan,fontSize:13}}>Excel directamente desde OneDrive</strong>
               <p style={{fontSize:11,color:muted,margin:'4px 0 0'}}>
-                Solo lectura. Tu archivo y sus macros permanecen intactos.
+                Solo lectura. Puedes abrir el Excel que otra persona te compartió; las macros permanecen intactas.
               </p>
             </div>
             {onedriveConectado&&<button type="button" style={btn()} onClick={()=>{
@@ -265,6 +302,37 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
               conectarOneDrive().catch(e=>setError('No se pudo iniciar Microsoft: '+e.message));
             }}>Conectar mi OneDrive</button>
           :<>
+            <div style={{marginTop:14,padding:13,borderRadius:9,border:'1px solid #437793',background:'#14374d'}}>
+              <strong style={{fontSize:13,color:'#b6f0ff'}}>Abrir Excel que te compartió otra persona</strong>
+              <p style={{fontSize:11,color:muted,margin:'6px 0 10px',lineHeight:1.6}}>
+                Pega el enlace completo de OneDrive que te enviaron. No hace falta que seas el propietario,
+                pero necesitas permiso para acceder al archivo. No se modifica ni se copia a tu OneDrive.
+              </p>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+                <input type="url" aria-label="Enlace compartido del Excel" value={enlaceCompartido}
+                  placeholder="https://onedrive.live.com/..."
+                  onChange={e=>setEnlaceCompartido(e.target.value)}
+                  onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void cargarEnlaceCompartido();}}}
+                  style={{flex:'1 1 310px',minWidth:0,padding:'10px 12px',borderRadius:8,
+                    background:'#0d283b',border:'1px solid #4e829b',color:ink,fontSize:12}}/>
+                <button type="button" style={btn(true)}
+                  disabled={onedriveCargando||!enlaceCompartido.trim()}
+                  onClick={cargarEnlaceCompartido}>
+                  {onedriveCargando?'Cargando…':'Abrir enlace compartido'}
+                </button>
+              </div>
+              <label style={{display:'flex',gap:8,alignItems:'center',marginTop:10,fontSize:11,color:muted}}>
+                <input type="checkbox" checked={recordarEnlace} onChange={e=>{
+                  setRecordarEnlace(e.target.checked);
+                  if(!e.target.checked){try{localStorage.removeItem('rc_excel_compartido_v1');}catch{}}
+                }}/>
+                Recordar el enlace en este navegador (no se envía a Supabase)
+              </label>
+            </div>
+            <details style={{marginTop:13}}>
+              <summary style={{cursor:'pointer',fontSize:12,color:cyan}}>
+                Buscar archivos que sí están guardados en mi OneDrive
+              </summary>
             <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}>
               <input type="search" aria-label="Buscar Excel en OneDrive" value={onedriveBusqueda}
                 onChange={e=>setOnedriveBusqueda(e.target.value)}
@@ -295,6 +363,10 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
             </div>}
             {onedriveArchivo&&<p style={{fontSize:11,color:green,margin:'9px 0 0'}}>
               Vinculado: {onedriveArchivo.name}. «Actualizar archivo» lee la versión actual de la nube.
+            </p>}
+            </details>
+            {onedriveArchivo?.tipo==='compartido'&&<p style={{fontSize:11,color:green,margin:'10px 0 0'}}>
+              Archivo compartido: {onedriveArchivo.name}. Puedes usar «Abrir enlace compartido» otra vez para leer la última versión.
             </p>}
           </>}
         </section>
