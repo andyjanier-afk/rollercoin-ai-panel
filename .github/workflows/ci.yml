@@ -1,0 +1,22 @@
+name: Validar panel RollerCoin
+
+on:
+  push:
+    branches: [main, corregir-latencia-y-finalizacion]
+  pull_request:
+    branches: [main]
+
+jobs:
+  compilacion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Compilar frontend
+        run: npm run build
