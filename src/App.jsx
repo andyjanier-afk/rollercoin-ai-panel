@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import ImportadorExcel from './ImportadorExcel';
 import { nivelDesdeStats, statsDesdeNivel, limitesStats, ajustarStatsAlRango } from './statsNivel';
 
 // ==========================================
@@ -1243,7 +1244,11 @@ export default function App() {
         <div className="rc-launch-shell" id="simulacion">
           <div className="rc-section-heading rc-launch-heading">
             <div><div className="rc-eyebrow">CONFIGURA TU LANZAMIENTO</div><h2><span className="rc-title-icon" aria-hidden="true">↗</span> Datos de lanzamiento</h2></div>
-            <span className="rc-section-aside">Selecciona un hámster y calcula su probabilidad</span>
+            <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+              <span className="rc-section-aside">Selecciona un hámster y calcula su probabilidad</span>
+              <ImportadorExcel supabase={supabase} catalogo={HAMSTERS_DEFAULT}
+                onImportado={() => { void cargarDashboard(); }} />
+            </div>
           </div>
           <div className="form-grid" style={styles.contenedorFormulario}>
           <div style={styles.controlPanel}>
