@@ -387,6 +387,7 @@ export default function App() {
       hamster: hamster.nombre,
       stats,
       expedicion: mapa.valor,
+      estado: fila._estado,
     });
     versionSimulacion.current += 1;
     setSimulacion(null);
@@ -421,6 +422,9 @@ export default function App() {
     recalcularTodo(form.hamster, valor, form.expedicion, form.bono, false);
   };
 
+  const bloquearRegistroExcel = Boolean(expedicionDesdeExcel && (
+    expedicionDesdeExcel.finalizado !== null || expedicionDesdeExcel.estado !== 'nueva'
+  ));
   const hamsterDeFormulario = HAMSTERS_DEFAULT.find(h => h.nombre === form.hamster) || HAMSTERS_DEFAULT[0];
   const rangoStats = limitesStats(hamsterDeFormulario.baseStats);
 
@@ -519,6 +523,10 @@ export default function App() {
   const confirmarGuardar = (e) => {
     e?.preventDefault();
     if (operacionEnCurso.current) return;
+    if (bloquearRegistroExcel) {
+      setMensajeOperacion('Esta fila contiene un resultado real o ya existe en Supabase. Para guardarla correctamente, usa el selector de Excel.');
+      return;
+    }
     const mapaSelec = resolverMapa(form.expedicion).nombre;
     setModalConfig({
       isOpen: true,
@@ -530,7 +538,7 @@ export default function App() {
   };
 
   const ejecutarGuardar = async () => {
-    if (operacionEnCurso.current) return;
+    if (operacionEnCurso.current || bloquearRegistroExcel) return;
     operacionEnCurso.current = true;
     setGuardando(true);
     setMensajeOperacion('');
@@ -1294,6 +1302,7 @@ export default function App() {
               border:'1px solid #3f91b0',borderRadius:9,background:'#11334a',
               color:'#c6eaf7',fontSize:12,lineHeight:1.65}}>
               <strong style={{color:'#8ce3fa'}}>Fila {expedicionDesdeExcel.filaExcel} del Excel seleccionada.</strong>
+              {expedicionDesdeExcel.estado !== 'nueva' && ' Esta fila ya tiene una coincidencia en Supabase: revisa el selector antes de guardar.'}
               {' '}Se copiaron fecha, hámster, mapa, STATS y porcentaje al formulario; todavía no se registró nada.
               {expedicionDesdeExcel.finalizado !== null
                 ? ' El Excel ya tiene el resultado real (' + (expedicionDesdeExcel.finalizado ? 'VIVIÓ' : 'MURIÓ') +
@@ -1350,7 +1359,7 @@ export default function App() {
               probabilidad={simulacion ? simulacion.probabilidad_ia : null}
               viveIA={simulacion ? simulacion.vive_ia : null}
               onAction={confirmarGuardar}
-              disabled={!statsValidos || guardando || procesandoId !== null}
+              disabled={bloquearRegistroExcel || !statsValidos || guardando || procesandoId !== null}
               actionLabel={guardando ? 'GUARDANDO...' : 'Registrar expedición'}
               isPreview={true}
               bonoManual={form.bono} 
