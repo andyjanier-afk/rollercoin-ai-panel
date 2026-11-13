@@ -24,3 +24,24 @@ test('no inventar nivel cuando las stats no corresponden al hámster', () => {
   assert.equal(statsDesdeNivel('',175),null);
   assert.equal(statsDesdeNivel(51,175),null);
 });
+
+test('rango de stats propio de cada hámster', async () => {
+  const { limitesStats, ajustarStatsAlRango } = await import('../src/statsNivel.js');
+  assert.deepEqual(limitesStats(175), { min: 175, max: 224 });
+  assert.deepEqual(limitesStats(206), { min: 206, max: 255 });
+  assert.deepEqual(limitesStats(230), { min: 230, max: 279 });
+  assert.deepEqual(limitesStats(50), { min: 50, max: 99 });
+  assert.equal(ajustarStatsAlRango(10000, 175), 224);
+  assert.equal(ajustarStatsAlRango(160, 175), 175);
+  assert.equal(ajustarStatsAlRango('', 206), 206);
+  assert.equal(ajustarStatsAlRango(200.6, 175), 201);
+  assert.equal(ajustarStatsAlRango(240, 206), 240);
+});
+
+test('los niveles permitidos usan el límite exacto de cada hámster', () => {
+  assert.equal(nivelDesdeStats(230,230),1);
+  assert.equal(nivelDesdeStats(279,230),50);
+  assert.equal(nivelDesdeStats(280,230),null);
+  assert.equal(nivelDesdeStats(229,230),null);
+  assert.equal(statsDesdeNivel(50,230),279);
+});
