@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { leerExpedicionesExcel, planificarImportacion, consultarRegistrosExistentes, validarFilaExcel } from './importacionExcel';
 import { ordenarExcelRecientePrimero } from './expedicionesActivas';
-import { oneDriveConfigurado, conectarOneDrive, recibirSesionOneDrive, conectadoOneDrive, desconectarOneDrive, buscarExcelEnOneDrive, descargarExcelDeOneDrive, descargarExcelCompartido } from './onedrive';
+import { oneDriveConfigurado, conectarOneDrive, recibirSesionOneDrive, conectadoOneDrive, desconectarOneDrive, tienePermisoEnlacesCompartidos, buscarExcelEnOneDrive, descargarExcelDeOneDrive, descargarExcelCompartido } from './onedrive';
 
 const ink='#eaf7ff', muted='#a9c7d9', green='#7be6b4', red='#ffadb6', cyan='#8fe4fb', gold='#ffd492';
 const btn=(primary=false)=>({
@@ -47,6 +47,7 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
   const [fechasCorregidas,setFechasCorregidas]=useState({});
   const [corrigiendoFecha,setCorrigiendoFecha]=useState(false);
   const [onedriveConectado,setOnedriveConectado]=useState(conectadoOneDrive);
+  const [permisoCompartido,setPermisoCompartido]=useState(tienePermisoEnlacesCompartidos);
   const [onedriveResultados,setOnedriveResultados]=useState([]);
   const [onedriveCargando,setOnedriveCargando]=useState(false);
   const [onedriveArchivo,setOnedriveArchivo]=useState(null);
@@ -64,6 +65,7 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
       .then(connected=>{
         if(mounted && connected){
           setOnedriveConectado(true);
+          setPermisoCompartido(tienePermisoEnlacesCompartidos());
           setAbierto(true);
           setAviso('OneDrive conectado. Busca tu Excel para leerlo directamente de la nube.');
         }
@@ -143,6 +145,10 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
 
   async function cargarEnlaceCompartido() {
     if(onedriveCargando)return;
+    if(!permisoCompartido){
+      setError('Antes de abrir enlaces compartidos, debes decidir si autorizas Files.ReadWrite. Este permiso incluye escritura aunque RollerCoin AI solo lee archivos.');
+      return;
+    }
     setOnedriveCargando(true);
     setError('');
     try {
@@ -287,7 +293,7 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
               </p>
             </div>
             {onedriveConectado&&<button type="button" style={btn()} onClick={()=>{
-              desconectarOneDrive();setOnedriveConectado(false);setOnedriveResultados([]);setOnedriveArchivo(null);
+              desconectarOneDrive();setOnedriveConectado(false);setPermisoCompartido(false);setOnedriveResultados([]);setOnedriveArchivo(null);
               setAviso('Sesión de OneDrive cerrada.');
             }}>Desconectar</button>}
           </div>
@@ -308,6 +314,19 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
                 Pega el enlace completo de OneDrive que te enviaron. No hace falta que seas el propietario,
                 pero necesitas permiso para acceder al archivo. No se modifica ni se copia a tu OneDrive.
               </p>
+              {!permisoCompartido&&<div style={{margin:'10px 0',padding:'11px 12px',borderRadius:8,
+                background:'#3c2d1f',border:'1px solid #a88453',fontSize:11,color:'#ffe0ad',lineHeight:1.65}}>
+                Para abrir archivos compartidos con Microsoft Graph, Microsoft exige el permiso
+                <strong> Files.ReadWrite</strong>. Este permiso concede lectura y escritura sobre archivos
+                accesibles de tu cuenta, aunque el código de RollerCoin AI <strong>solo leerá</strong> el Excel.
+                Es opcional: puedes seguir cargando el .xlsm manualmente sin autorizarlo.
+                <div style={{marginTop:10}}>
+                  <button type="button" style={btn()} onClick={()=>{
+                    if(!window.confirm('Microsoft solicita Files.ReadWrite para enlaces compartidos. Aunque RollerCoin AI solo leerá archivos, este permiso técnicamente permite modificar los archivos accesibles. ¿Quieres ir a Microsoft y decidir si autorizas el acceso?')) return;
+                    conectarOneDrive({compartidos:true}).catch(e=>setError('No se pudo solicitar acceso: '+e.message));
+                  }}>Autorizar acceso ampliado a enlaces compartidos</button>
+                </div>
+              </div>}
               <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
                 <input type="url" aria-label="Enlace compartido del Excel" value={enlaceCompartido}
                   placeholder="https://onedrive.live.com/..."
@@ -316,7 +335,7 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
                   style={{flex:'1 1 310px',minWidth:0,padding:'10px 12px',borderRadius:8,
                     background:'#0d283b',border:'1px solid #4e829b',color:ink,fontSize:12}}/>
                 <button type="button" style={btn(true)}
-                  disabled={onedriveCargando||!enlaceCompartido.trim()}
+                  disabled={onedriveCargando||!enlaceCompartido.trim()||!permisoCompartido}
                   onClick={cargarEnlaceCompartido}>
                   {onedriveCargando?'Cargando…':'Abrir enlace compartido'}
                 </button>

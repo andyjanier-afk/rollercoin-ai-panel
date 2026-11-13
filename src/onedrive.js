@@ -1,5 +1,6 @@
 // Conexión OneDrive personal con Microsoft identity platform (OAuth2 + PKCE).
-// Solo utiliza permiso delegado Files.Read. No usa credenciales de aplicación ni ejecuta macros.
+// Files.Read por defecto. Para la API /shares Microsoft exige Files.ReadWrite;
+// solo se solicita si el usuario decide autorizarlo expresamente. Nunca ejecuta VBA.
 const CLIENT_ID = import.meta.env.VITE_MICROSOFT_CLIENT_ID || '';
 const STORE = 'rc_ms_oauth_v1';
 const TOKEN = 'rc_ms_token_v1';
@@ -16,22 +17,23 @@ function redirectUri() {
   return window.location.origin + window.location.pathname;
 }
 
-export async function conectarOneDrive() {
+export async function conectarOneDrive({ compartidos = false } = {}) {
   if (!CLIENT_ID) throw new Error('Falta configurar VITE_MICROSOFT_CLIENT_ID en Vercel.');
+  const scope = compartidos ? 'Files.ReadWrite' : 'Files.Read';
   const verifier = encode(crypto.getRandomValues(new Uint8Array(32)));
   const state = encode(crypto.getRandomValues(new Uint8Array(20)));
   const hashed = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
-  sessionStorage.setItem(STORE, JSON.stringify({ verifier, state }));
+  sessionStorage.setItem(STORE, JSON.stringify({ verifier, state, scope }));
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     response_type: 'code',
     redirect_uri: redirectUri(),
     response_mode: 'query',
-    scope: 'Files.Read',
+    scope,
     state,
     code_challenge: encode(new Uint8Array(hashed)),
     code_challenge_method: 'S256',
-    prompt: 'select_account'
+    prompt: compartidos ? 'consent' : 'select_account'
   });
   window.location.assign('https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?' + params);
 }
@@ -47,7 +49,7 @@ export async function recibirSesionOneDrive() {
   cleanup();
   if (error) throw new Error(query.get('error_description') || error);
   if (!pend) throw new Error('La autenticación de OneDrive expiró. Conecta nuevamente.');
-  const {state,verifier} = JSON.parse(pend);
+  const {state,verifier,scope} = JSON.parse(pend);
   if (!state || state !== query.get('state') || !verifier) throw new Error('Validación de seguridad de OneDrive fallida.');
   const body = new URLSearchParams({
     client_id: CLIENT_ID,
@@ -55,7 +57,7 @@ export async function recibirSesionOneDrive() {
     code,
     redirect_uri: redirectUri(),
     code_verifier: verifier,
-    scope: 'Files.Read'
+    scope: scope || 'Files.Read'
   });
   const response = await fetch('https://login.microsoftonline.com/consumers/oauth2/v2.0/token', {
     method: 'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body
@@ -64,6 +66,7 @@ export async function recibirSesionOneDrive() {
   if (!response.ok || !data.access_token) throw new Error(data.error_description || 'No se pudo completar la conexión Microsoft.');
   sessionStorage.setItem(TOKEN, JSON.stringify({
     access_token:data.access_token,
+    scope: String(data.scope || scope || ''),
     expires_at:Date.now() + Math.max(0,Number(data.expires_in||3600)-120)*1000
   }));
   return true;
@@ -74,6 +77,14 @@ export function conectadoOneDrive() {
     const data=JSON.parse(sessionStorage.getItem(TOKEN) || 'null');
     return Boolean(data?.access_token && data.expires_at > Date.now());
   } catch {return false;}
+}
+
+export function tienePermisoEnlacesCompartidos() {
+  try {
+    const sesion = JSON.parse(sessionStorage.getItem(TOKEN) || 'null');
+    return Boolean(sesion?.access_token && sesion.expires_at>Date.now() &&
+      String(sesion.scope || '').split(/\s+/).some(s=>s.toLowerCase()==='files.readwrite'));
+  }catch{return false;}
 }
 
 export function desconectarOneDrive() {sessionStorage.removeItem(TOKEN);}
@@ -126,6 +137,8 @@ function mensajeGraph(error) {
 }
 
 export async function descargarExcelCompartido(enlace) {
+  if(!tienePermisoEnlacesCompartidos())
+    throw Error('Falta autorización específica para enlaces compartidos (Files.ReadWrite).');
   const candidatas = enlacesCompartidosCandidatos(enlace);
   let ultimoError = '';
   for (const url of candidatas) {
