@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { nivelDesdeStats, statsDesdeNivel } from './statsNivel';
+import { nivelDesdeStats, statsDesdeNivel, limitesStats, ajustarStatsAlRango } from './statsNivel';
 
 // ==========================================
 // CONFIGURACIÓN DE CONEXIÓN
@@ -383,22 +383,42 @@ export default function App() {
     recalcularTodo(form.hamster, valor, form.expedicion, form.bono, false);
   };
 
-  const manejarStats = (e) => {
-    const valor = e.target.value;
-    const h = HAMSTERS_DEFAULT.find(item => item.nombre === form.hamster) || HAMSTERS_DEFAULT[0];
-    const nivel = nivelDesdeStats(valor, h.baseStats);
+  const hamsterDeFormulario = HAMSTERS_DEFAULT.find(h => h.nombre === form.hamster) || HAMSTERS_DEFAULT[0];
+  const rangoStats = limitesStats(hamsterDeFormulario.baseStats);
+
+  const ponerStats = (stats) => {
+    const nivel = nivelDesdeStats(stats, hamsterDeFormulario.baseStats);
     const mapa = resolverMapa(form.expedicion);
     setForm(prev => ({
-      ...prev, stats: valor, nivel: nivel ?? '',
-      porcentaje: nivel === null ? '' : calcularExitoJuego(Number(valor), mapa.dificultad, Number(prev.bono) || 0),
+      ...prev, stats, nivel: nivel ?? '',
+      porcentaje: nivel === null ? '' : calcularExitoJuego(Number(stats), mapa.dificultad, Number(prev.bono) || 0),
     }));
     versionSimulacion.current += 1;
     setSimulacion(null);
   };
 
-  const statsValidos = nivelDesdeStats(form.stats,
-    (HAMSTERS_DEFAULT.find(h => h.nombre === form.hamster) || HAMSTERS_DEFAULT[0]).baseStats
-  ) !== null;
+  const manejarStats = (e) => {
+    const valor = e.target.value;
+    if (valor === '') {
+      ponerStats('');
+      return;
+    }
+    // No permitir cifras superiores al máximo; admitir valores intermedios
+    // mientras se escribe y ajustar los inferiores al perder el foco.
+    if (!/^\d+$/.test(valor)) return;
+    const numero = Number(valor);
+    if (!Number.isSafeInteger(numero)) return;
+    ponerStats(numero > rangoStats.max ? rangoStats.max : valor);
+  };
+
+  const ajustarStats = () => {
+    const corregido = ajustarStatsAlRango(form.stats, hamsterDeFormulario.baseStats);
+    if (corregido !== null && Number(form.stats) !== corregido) {
+      ponerStats(corregido);
+    }
+  };
+
+  const statsValidos = nivelDesdeStats(form.stats, hamsterDeFormulario.baseStats) !== null;
 
   const manejarBono = (e) => {
     let valor = parseFloat(e.target.value);
@@ -1245,7 +1265,8 @@ export default function App() {
               </div>
               <div>
                 <label style={styles.label}>STATS</label>
-                <input type="number" min="1" step="1" className="premium-input" value={form.stats} onChange={manejarStats}
+                <input type="number" min={rangoStats.min} max={rangoStats.max} step="1" className="premium-input"
+                  value={form.stats} onChange={manejarStats} onBlur={ajustarStats}
                   style={{ ...styles.input, borderColor: statsValidos ? '#38546b' : '#fb7185' }}
                   aria-invalid={!statsValidos} aria-describedby="ayuda-stats-nivel" />
               </div>
@@ -1253,8 +1274,8 @@ export default function App() {
             <div id="ayuda-stats-nivel" role={statsValidos ? undefined : 'alert'}
               style={{ color: statsValidos ? '#8bbed0' : '#fda4af', fontSize: '11px', lineHeight: 1.5 }}>
               {statsValidos
-                ? 'Escribe los STATS reales y el NIVEL se calculará automáticamente. También puedes cambiar el nivel manualmente.'
-                : 'Los stats indicados no corresponden a un nivel de 1 a 50 para este hámster. Corrige el valor antes de continuar.'}
+                ? `Rango permitido para ${form.hamster}: ${rangoStats.min}–${rangoStats.max} STATS (niveles 1–50). El NIVEL se calcula automáticamente.`
+                : `Los STATS de ${form.hamster} deben estar entre ${rangoStats.min} y ${rangoStats.max}. Al salir del campo se ajustarán al límite válido.`}
             </div>
 
             <label style={styles.label}>PROBABILIDAD BASE ESTIMADA</label>
