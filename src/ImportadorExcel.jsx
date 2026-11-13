@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { leerExpedicionesExcel, planificarImportacion, consultarRegistrosExistentes } from './importacionExcel';
+import { leerExpedicionesExcel, planificarImportacion, consultarRegistrosExistentes, validarFilaExcel } from './importacionExcel';
 import { ordenarExcelRecientePrimero } from './expedicionesActivas';
 
 const ink='#eaf7ff', muted='#a9c7d9', green='#7be6b4', red='#ffadb6', cyan='#8fe4fb', gold='#ffd492';
@@ -43,6 +43,8 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
   const [elegida,setElegida]=useState(null);
   const [error,setError]=useState('');
   const [aviso,setAviso]=useState('');
+  const [fechasCorregidas,setFechasCorregidas]=useState({});
+  const [corrigiendoFecha,setCorrigiendoFecha]=useState(false);
 
   const filtradas=useMemo(()=>{
     const q=busqueda.toLowerCase().trim();
@@ -54,7 +56,7 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
   async function leer(event) {
     const file=event.target.files?.[0]; if(!file)return;
     setLeyendo(true);setError('');setAviso('');setPlan(null);setRevision(null);setElegida(null);
-    setArchivo(file.name);setFiltro('nueva');setBusqueda('');setVisibles(60);
+    setArchivo(file.name);setFiltro('nueva');setBusqueda('');setVisibles(60);setFechasCorregidas({});
     try {
       const datos=await leerExpedicionesExcel(file,catalogo);
       const anteriores=await consultarRegistrosExistentes(supabase);
@@ -62,6 +64,42 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
       setRevision(datos);setPlan(nuevoPlan);setFilas(enumerarFilas(datos,nuevoPlan));
     }catch(e){setError('No se pudo revisar el Excel: '+e.message);}
     finally{setLeyendo(false);event.target.value='';}
+  }
+
+  async function confirmarFecha(row) {
+    const fechaReal = fechasCorregidas[row.filaExcel] || '';
+    const hoy = new Date();
+    const hoyLocal = [hoy.getFullYear(),String(hoy.getMonth()+1).padStart(2,'0'),String(hoy.getDate()).padStart(2,'0')].join('-');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaReal) || fechaReal > hoyLocal) {
+      setError('Debes introducir la fecha real de la expedición (no puede ser una fecha futura).');
+      return;
+    }
+    if (!revision || !revision.fechasPorRevisar?.some(x=>x.filaExcel===row.filaExcel)) return;
+    const original = row.origen;
+    const revisada = validarFilaExcel({
+      ...original, fecha:fechaReal, fechaAutomatica:false,
+    }, catalogo);
+    setCorrigiendoFecha(true);
+    setError('');
+    try {
+      const validas = revision.validas.filter(x=>x.filaExcel!==row.filaExcel);
+      if (revisada.registro) validas.push({...revisada.registro,filaExcel:row.filaExcel});
+      const invalidas = revision.invalidas.filter(x=>x.filaExcel!==row.filaExcel);
+      if (revisada.errores.length) invalidas.push({filaExcel:row.filaExcel,errores:revisada.errores});
+      const revisionNueva = {
+        ...revision,validas,invalidas,
+        fechasPorRevisar: revision.fechasPorRevisar.filter(x=>x.filaExcel!==row.filaExcel),
+      };
+      const anteriores = await consultarRegistrosExistentes(supabase);
+      const nuevoPlan = planificarImportacion(revisionNueva.validas,anteriores);
+      setRevision(revisionNueva);setPlan(nuevoPlan);
+      setFilas(enumerarFilas(revisionNueva,nuevoPlan));
+      setAviso(revisada.registro
+        ? 'Fecha real confirmada para la fila '+row.filaExcel+': '+fechaReal+'. Ahora ya puedes seleccionarla.'
+        : 'Fecha corregida en fila '+row.filaExcel+', pero hay otros errores en los datos de esa fila.');
+      setElegida(null);
+    } catch(e) {setError('No se pudo revisar el registro corregido: '+e.message);}
+    finally {setCorrigiendoFecha(false);}
   }
 
   function ponerEnFormulario(fila) {
@@ -204,6 +242,49 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
           </div>
           {filtradas.length>visibles&&<button type="button" style={{...btn(),marginTop:10}}
             onClick={()=>setVisibles(v=>v+60)}>Mostrar 60 más</button>}
+          {(revision.fechasPorRevisar?.length||0)>0&&<div style={{
+            marginTop:17,padding:15,border:'1px solid #bc8855',borderRadius:10,
+            background:'#302718'}}>
+            <strong style={{fontSize:13,color:'#ffe1a0'}}>
+              Fechas automáticas: {revision.fechasPorRevisar.length} filas necesitan confirmación
+            </strong>
+            <p style={{fontSize:11,lineHeight:1.65,color:'#f0d1a7'}}>
+              Estas celdas usan TODAY() / NOW() y Excel cambia la fecha al recalcular.
+              El día mostrado no necesariamente corresponde al envío real.
+              Indica la fecha correcta para habilitar cada fila. No se modificarán las macros.
+            </p>
+            <div style={{display:'grid',gap:9,maxHeight:300,overflowY:'auto'}}>
+              {revision.fechasPorRevisar.map(row=><div key={row.filaExcel}
+                style={{display:'flex',alignItems:'center',gap:9,flexWrap:'wrap',
+                  border:'1px solid #866944',borderRadius:7,padding:'9px 10px'}}>
+                <div style={{flex:'1 1 170px',fontSize:11,color:'#fbe9c9'}}>
+                  <strong>Fila {row.filaExcel} · {row.hamster}</strong>
+                  <div style={{color:'#d7bc9a'}}>{row.expedicion} · {row.stats} STATS
+                    · Excel muestra {row.fechaMostrada||'sin fecha'}
+                  </div>
+                </div>
+                <label style={{fontSize:11,color:'#f4d8ab'}}>
+                  Fecha real
+                  <input type="date" aria-label={'Fecha real de fila '+row.filaExcel}
+                    max={(()=>{
+                      const d=new Date();
+                      return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),
+                        String(d.getDate()).padStart(2,'0')].join('-');
+                    })()}
+                    value={fechasCorregidas[row.filaExcel]||''}
+                    disabled={corrigiendoFecha||guardando}
+                    onChange={e=>setFechasCorregidas(prev=>({...prev,[row.filaExcel]:e.target.value}))}
+                    style={{display:'block',marginTop:4,padding:'7px',background:'#1b2a37',
+                      color:'#fff',border:'1px solid #a17e51',borderRadius:6}}/>
+                </label>
+                <button type="button" style={btn()}
+                  disabled={!fechasCorregidas[row.filaExcel]||corrigiendoFecha||guardando}
+                  onClick={()=>confirmarFecha(row)}>
+                  {corrigiendoFecha?'Comprobando…':'Confirmar fecha'}
+                </button>
+              </div>)}
+            </div>
+          </div>}
           {revision.invalidas.length>0&&<details style={{marginTop:15}}>
             <summary style={{fontSize:12,color:red,cursor:'pointer',fontWeight:750}}>
               Ver {revision.invalidas.length} filas inválidas (no se registrarán)
