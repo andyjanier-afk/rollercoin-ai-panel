@@ -3,6 +3,34 @@
 const textDecoder = new TextDecoder('utf-8');
 const MAPAS = new Set(['3h','12h','18h','20h','24h Dark','24h Beach','30h']);
 
+// TODAY() y NOW() son volátiles: Excel cambia el valor almacenado
+// cuando recalcula el libro. Ese valor NO demuestra la fecha del envío.
+// También detectamos fórmulas compartidas que reutilizan la fórmula maestra.
+export function esFormulaFechaDinamica(formula) {
+  return /(?:^|[^A-Za-z0-9_.])(?:TODAY|NOW)\s*\(/i.test(String(formula || ''));
+}
+
+function recogerFormulasCompartidas(hoja) {
+  const formulas = new Map();
+  for (const celda of elementos(hoja, 'c')) {
+    const f = elementos(celda, 'f')[0];
+    if (f?.getAttribute('t') === 'shared' && f.getAttribute('si') !== null &&
+        String(f.textContent || '').trim()) {
+      formulas.set(f.getAttribute('si'), f.textContent);
+    }
+  }
+  return formulas;
+}
+
+function fechaConFormulaDinamica(celda, compartidas) {
+  if (!celda) return false;
+  const f = elementos(celda, 'f')[0];
+  if (!f) return false;
+  const formula = String(f.textContent || '').trim()
+    || (f.getAttribute('t') === 'shared' ? compartidas.get(f.getAttribute('si')) : '');
+  return esFormulaFechaDinamica(formula);
+}
+
 export const normalizarNombre = value => String(value ?? '').normalize('NFKC')
   .replace(/[’‘]/g, "'").trim().replace(/\s+/g, ' ').toLocaleLowerCase('es');
 
@@ -134,6 +162,9 @@ export function validarFilaExcel(fila, catalogo) {
   else if (res === 'no' || res === 'false' || res === '0') finalizado = false;
   else if (res !== '') errores.push('Resultado no reconocido: ' + res);
   if (!fecha) errores.push('Fecha inválida');
+  if (fila.fechaAutomatica) {
+    errores.push('Fecha con fórmula automática TODAY()/NOW(): hay que confirmar el día real');
+  }
   if (!h) errores.push('Hámster no incluido en el catálogo: ' + String(fila.hamster || 'vacío'));
   if (!MAPAS.has(mapa)) errores.push('Mapa no reconocido: ' + (mapa || 'vacío'));
   if (!Number.isInteger(stats) || !h || stats < h.baseStats || stats > h.baseStats + 49)
@@ -165,13 +196,18 @@ export async function leerExpedicionesExcel(file, catalogo) {
     const doc = parsearXML(await extraer(nombre));
     const rows = elementos(doc, 'sheetData')[0];
     if (!rows) continue;
+    const compartidas = recogerFormulasCompartidas(doc);
     let encabezado = null, registros = [];
     for (const row of elementos(rows, 'row').slice(0, 10000)) {
       const numero = Number(row.getAttribute('r')) || 0;
       const celdas = new Map();
       for (const c of elementos(row, 'c')) {
         const col = (c.getAttribute('r') || '').match(/^[A-Z]+/)?.[0];
-        if (col) celdas.set(col, { valor: textoCelda(c, shared), tipo: c.getAttribute('t') || '' });
+        if (col) celdas.set(col, {
+          valor: textoCelda(c, shared),
+          tipo: c.getAttribute('t') || '',
+          fechaAutomatica: fechaConFormulaDinamica(c, compartidas)
+        });
       }
       if (!encabezado) {
         const d = Object.fromEntries([...celdas].map(([col,c]) => [String(c.valor).trim().toLocaleLowerCase('es'),col]));
@@ -186,7 +222,9 @@ export async function leerExpedicionesExcel(file, catalogo) {
       // Ignorar la fila vacía preparada por las macros.
       if (!get('hamster') && !get('stats') && !get('expedicion')) continue;
       registros.push({
-        filaExcel: numero, fecha: get('fecha'), fecha1904: usa1904, stats: get('stats'),
+        filaExcel: numero, fecha: get('fecha'), fecha1904: usa1904,
+        fechaAutomatica: Boolean(celdas.get(encabezado.fecha)?.fechaAutomatica),
+        stats: get('stats'),
         hamster: get('hamster'), expedicion: get('expedicion'), porcentaje:get('porcentaje'),
         porcentajeNumerico: celdas.get(encabezado.porcentaje)?.tipo !== 's',
         finalizado:get('finalizado')
@@ -205,6 +243,16 @@ export async function leerExpedicionesExcel(file, catalogo) {
     nombreHoja, origen: file.name,
     validas: revisadas.filter(r => !r.errores.length).map(r => ({...r.registro, filaExcel:r.filaExcel})),
     invalidas: revisadas.filter(r => r.errores.length).map(r => ({filaExcel:r.filaExcel, errores:r.errores})),
+    // Solo filas con fórmula dinámica y datos en las columnas de expedición.
+    // Se conserva la fila original para que el usuario pueda confirmar fecha sin tocar las macros.
+    fechasPorRevisar: datos.filter(r => r.fechaAutomatica).map(r => ({
+      filaExcel: r.filaExcel,
+      hamster: r.hamster,
+      expedicion: r.expedicion,
+      stats: r.stats,
+      fechaMostrada: fechaExcel(r.fecha, Boolean(r.fecha1904)),
+      origen: r
+    })),
     total: datos.length,
   };
 }
