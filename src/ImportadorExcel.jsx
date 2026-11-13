@@ -171,7 +171,7 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
           <button type="button" style={btn()} disabled={guardando} onClick={()=>setAbierto(false)}>Cerrar ✕</button>
         </div>
         <p style={{color:muted,fontSize:12,lineHeight:1.7}}>
-          Selecciona tu archivo, busca una expedición y elige qué hacer con esa fila.
+          Abre tu Excel y pulsa «Cargar» directamente en la fila: los datos aparecerán arriba sin desplazarte ni registrar nada.
           <strong style={{color:ink}}> No se importa todo el Excel ni se ejecutan macros.</strong>
         </p>
         <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',
@@ -214,9 +214,36 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
             </select>
           </div>
           <p style={{fontSize:11,color:muted}}>Mostrando {Math.min(filtradas.length,visibles)} de {filtradas.length} filas.</p>
-          <div style={{border:'1px solid #365873',borderRadius:9,overflowX:'auto'}}>
+          {elegida&&<div style={{marginTop:17,padding:17,border:'1px solid #4393b4',borderRadius:12,
+            background:'#113047'}}>
+            <div style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
+              <strong>Expedición seleccionada · fila {elegida.filaExcel}</strong>
+              <span style={{fontSize:11,color:estadoLabel[elegida._estado]?.[1]}}>{estadoLabel[elegida._estado]?.[0]}</span>
+            </div>
+            <p style={{fontSize:12,color:muted,lineHeight:1.7}}>
+              <strong style={{color:ink}}>{elegida.hamster}</strong> · {elegida.expedicion} · Nivel {elegida.nivel}
+              · {elegida.stats} STATS · {elegida.porcentaje}% · {elegida.fecha} ·
+              <strong style={{color:resultadoColor(elegida.finalizado)}}> {resultadoLabel(elegida.finalizado)}</strong>
+            </p>
+            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+              <button type="button" style={btn()} disabled={guardando} onClick={()=>ponerEnFormulario(elegida)}>
+                Rellenar formulario de la página
+              </button>
+              <button type="button" style={{...btn(true),
+                opacity:['nueva','actualizar'].includes(elegida._estado)?1:.45}}
+                disabled={guardando||!['nueva','actualizar'].includes(elegida._estado)}
+                onClick={()=>guardarUna(elegida)}>
+                {guardando?'Registrando…':elegida._estado==='actualizar'?'Completar este resultado':'Registrar solo esta fila'}
+              </button>
+            </div>
+            <p style={{fontSize:11,color:muted,lineHeight:1.6}}>
+              Rellenar formulario no guarda nada. Registrar una fila requiere confirmación,
+              y no genera predicciones IA históricas inventadas.
+            </p>
+          </div>}
+          <div style={{border:'1px solid #365873',borderRadius:9,overflow:'auto',maxHeight:'min(47vh,410px)'}}>
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
-              <thead style={{background:'#1c435d',textAlign:'left'}}>
+              <thead style={{background:'#1c435d',textAlign:'left',position:'sticky',top:0,zIndex:2}}>
                 <tr>{['Fila','Fecha','Hámster','Mapa','STATS','%','Resultado','Estado',''].map(h=>
                   <th key={h} style={{padding:'11px 9px',whiteSpace:'nowrap'}}>{h}</th>)}</tr>
               </thead>
@@ -230,11 +257,18 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
                 <td style={{padding:'9px'}}>{row.porcentaje}%</td>
                 <td style={{padding:'9px',color:resultadoColor(row.finalizado)}}>{resultadoLabel(row.finalizado)}</td>
                 <td style={{padding:'9px',color:estadoLabel[row._estado]?.[1],fontSize:11}}>{estadoLabel[row._estado]?.[0]}</td>
-                <td style={{padding:'9px'}}>
-                  <button type="button" style={{...btn(),padding:'7px 10px'}}
-                    onClick={()=>setElegida(row)}>
-                    {elegida?.filaExcel===row.filaExcel?'✓ Elegida':'Elegir'}
-                  </button>
+                <td style={{padding:'9px',whiteSpace:'nowrap'}}>
+                  <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
+                    <button type="button" style={{...btn(true),padding:'7px 10px'}} disabled={guardando}
+                      onClick={()=>ponerEnFormulario(row)}
+                      aria-label={'Cargar fila '+row.filaExcel+' al formulario'}>
+                      ↗ Cargar
+                    </button>
+                    <button type="button" style={{...btn(),padding:'7px 10px'}} disabled={guardando}
+                      onClick={()=>setElegida(row)} aria-label={'Ver detalles de fila '+row.filaExcel}>
+                      {elegida?.filaExcel===row.filaExcel?'✓':'Ver'}
+                    </button>
+                  </div>
                 </td>
               </tr>)}</tbody>
             </table>
@@ -295,33 +329,7 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
               </div>)}
             </div>
           </details>}
-          {elegida&&<div style={{marginTop:17,padding:17,border:'1px solid #4393b4',borderRadius:12,
-            background:'#113047'}}>
-            <div style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
-              <strong>Expedición seleccionada · fila {elegida.filaExcel}</strong>
-              <span style={{fontSize:11,color:estadoLabel[elegida._estado]?.[1]}}>{estadoLabel[elegida._estado]?.[0]}</span>
-            </div>
-            <p style={{fontSize:12,color:muted,lineHeight:1.7}}>
-              <strong style={{color:ink}}>{elegida.hamster}</strong> · {elegida.expedicion} · Nivel {elegida.nivel}
-              · {elegida.stats} STATS · {elegida.porcentaje}% · {elegida.fecha} ·
-              <strong style={{color:resultadoColor(elegida.finalizado)}}> {resultadoLabel(elegida.finalizado)}</strong>
-            </p>
-            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-              <button type="button" style={btn()} disabled={guardando} onClick={()=>ponerEnFormulario(elegida)}>
-                Rellenar formulario de la página
-              </button>
-              <button type="button" style={{...btn(true),
-                opacity:['nueva','actualizar'].includes(elegida._estado)?1:.45}}
-                disabled={guardando||!['nueva','actualizar'].includes(elegida._estado)}
-                onClick={()=>guardarUna(elegida)}>
-                {guardando?'Registrando…':elegida._estado==='actualizar'?'Completar este resultado':'Registrar solo esta fila'}
-              </button>
-            </div>
-            <p style={{fontSize:11,color:muted,lineHeight:1.6}}>
-              Rellenar formulario no guarda nada. Registrar una fila requiere confirmación,
-              y no genera predicciones IA históricas inventadas.
-            </p>
-          </div>}
+
         </>}
       </div>
     </div>}
