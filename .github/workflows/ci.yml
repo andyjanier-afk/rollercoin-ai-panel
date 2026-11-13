@@ -18,5 +18,7 @@ jobs:
           cache: npm
       - name: Instalar dependencias
         run: npm ci
+      - name: Probar cálculo de stats y nivel
+        run: node --test tests/*.test.js
       - name: Compilar frontend
         run: npm run build
