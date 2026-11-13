@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { claveExpedicion, normalizarNombre, validarFilaExcel, planificarImportacion } from '../src/importacionExcel.js';
+import { claveExpedicion, normalizarNombre, validarFilaExcel, planificarImportacion, esFormulaFechaDinamica } from '../src/importacionExcel.js';
 
 const catalogo = [
   {nombre:"Jack O’Mine",baseStats:220},
@@ -99,4 +99,23 @@ test('sí puede completar varios pendientes cuando todos los resultados coincide
   const p=planificarImportacion(excel,previos);
   assert.equal(p.actualizar.length,2);
   assert.equal(p.conflictos.length,0);
+});
+
+test('detecta TODAY() y NOW() de una fórmula compartida de Excel',()=>{
+  assert.equal(esFormulaFechaDinamica('TODAY()'),true);
+  assert.equal(esFormulaFechaDinamica('NOW()'),true);
+  assert.equal(esFormulaFechaDinamica('IF(A1>0,TODAY(),B1)'),true);
+  assert.equal(esFormulaFechaDinamica('SUM(A1:A2)'),false);
+  assert.equal(esFormulaFechaDinamica('MYTODAY()'),false);
+});
+
+test('no deja registrar fechas calculadas automáticamente antes de corregirlas',()=>{
+  const excel=fila({fecha:'46339',fechaAutomatica:true});
+  const incorrecto=validarFilaExcel(excel,catalogo);
+  assert.ok(incorrecto.errores.some(e=>e.includes('TODAY()')));
+  assert.equal(incorrecto.registro,null);
+
+  const corregido=validarFilaExcel({...excel,fecha:'2026-11-12',fechaAutomatica:false},catalogo);
+  assert.deepEqual(corregido.errores,[]);
+  assert.equal(corregido.registro.fecha,'2026-11-12');
 });
