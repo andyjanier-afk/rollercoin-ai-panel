@@ -317,6 +317,24 @@ export default function App() {
   // Uso sin inicio de sesión: Supabase aplica los permisos RLS de la base de datos.
   // Quitar el login de React no concede permisos si RLS los restringe.
 
+  // El listado y las métricas se actualizan por separado.
+  // Registrar o finalizar nunca espera al reentrenamiento del backend.
+  const cargarMetricas = async () => {
+    try {
+      const res = await fetch(`${FASTAPI_URL}/metricas`);
+      const datos = await res.json();
+      if (!res.ok) throw new Error(datos.detail || `Error del backend: ${res.status}`);
+      setMetricas(datos.metricas);
+      setResumenHamsters(datos.resumen_hamsters || []);
+      setEvaluacionModelo(datos.evaluacion_modelo || null);
+      setEstadoModelo(datos.estado_modelo || 'desconocido');
+      setExpedicionesEntrenables(datos.expediciones_entrenables || 0);
+    } catch (error) {
+      // Una caída de Render no debe impedir guardar resultados en Supabase.
+      console.error('No se pudieron cargar las métricas (los registros siguen disponibles):', error);
+    }
+  };
+
   const cargarDashboard = async () => {
     setErrorDashboard('');
     try {
@@ -328,24 +346,12 @@ export default function App() {
       if (respuestaHist.error) throw respuestaHist.error;
       setActivas(respuestaActivas.data || []);
       setHistorial(respuestaHist.data || []);
-
-      let res;
-      try {
-        res = await fetch(`${FASTAPI_URL}/metricas`);
-      } catch (error) {
-        throw new Error(`No hay conexión desde Vercel hacia Render. Revisa CORS_ORIGINS en Render (incluye https://rollercoin-ai-panel.vercel.app). Detalle: ${error.message}`);
-      }
-      const datos = await res.json();
-      if (!res.ok) throw new Error(datos.detail || `Error del backend: ${res.status}`);
-      setMetricas(datos.metricas);
-      setResumenHamsters(datos.resumen_hamsters || []);
-      setEvaluacionModelo(datos.evaluacion_modelo || null);
-      setEstadoModelo(datos.estado_modelo || 'desconocido');
-      setExpedicionesEntrenables(datos.expediciones_entrenables || 0);
     } catch (error) {
-      setErrorDashboard(`No se pudo actualizar el tablero: ${error.message}`);
-      console.error('Error sincronizando:', error);
+      setErrorDashboard(`No se pudieron cargar las expediciones: ${error.message}`);
+      console.error('Error sincronizando expediciones:', error);
     }
+    // No bloquear otras operaciones mientras se consulta la IA.
+    void cargarMetricas();
   };
 
   useEffect(() => { cargarDashboard(); }, []);
@@ -478,14 +484,15 @@ export default function App() {
       const { data, error } = await supabase
         .from('expediciones')
         .insert([nuevaExpedicion])
-        .select('id')
+        .select('*')
         .single();
       if (error) throw error;
       if (!data?.id) throw new Error('Supabase no confirmó la creación del registro.');
 
       setSimulacion(null);
-      setMensajeOperacion(`Expedición registrada correctamente (ID ${data.id}).`);
-      await cargarDashboard();
+      setActivas(prev => [data, ...prev.filter(item => item.id !== data.id)]);
+      setMensajeOperacion(`Expedición registrada correctamente (ID ${data.id}). Ya puedes marcar su resultado.`);
+      void cargarMetricas();
     } catch (error) {
       setMensajeOperacion(`No se pudo guardar la expedición: ${error.message}${String(error.code) === '42501' ? ' (verifica los permisos RLS en Supabase)' : ''}`);
       console.error('Error al guardar:', error);
@@ -518,8 +525,9 @@ export default function App() {
         .delete().eq('id', id).is('finalizado', null).select('id');
       if (error) throw error;
       if (!data?.length) throw new Error('Registro inexistente o sin permiso para eliminar.');
+      setActivas(prev => prev.filter(item => item.id !== id));
       setMensajeOperacion('Expedición activa eliminada correctamente.');
-      await cargarDashboard();
+      void cargarMetricas();
     } catch (error) {
       setMensajeOperacion(`No se pudo eliminar: ${error.message}${String(error.code) === '42501' ? ' (verifica los permisos RLS en Supabase)' : ''}`);
       console.error('Error al eliminar:', error);
@@ -539,11 +547,15 @@ export default function App() {
         .update({ finalizado: sobrevivio })
         .eq('id', id)
         .is('finalizado', null)
-        .select('id');
+        .select('*');
       if (error) throw error;
       if (!data?.length) throw new Error('El registro ya estaba cerrado o no tienes permiso.');
-      setMensajeOperacion(`Resultado registrado: ${sobrevivio ? 'VIVIÓ' : 'MURIÓ'}. Las métricas del modelo pueden reflejarlo después de actualizar su caché.`);
-      await cargarDashboard();
+      // La actualización en Supabase ya terminó: mostrar el resultado sin esperar a Render.
+      const registroFinalizado = data[0];
+      setActivas(prev => prev.filter(item => item.id !== id));
+      setHistorial(prev => [registroFinalizado, ...prev.filter(item => item.id !== id)].slice(0, 50));
+      setMensajeOperacion(`Resultado registrado: ${sobrevivio ? 'VIVIÓ' : 'MURIÓ'}. La IA actualizará sus métricas por separado.`);
+      void cargarMetricas();
     } catch (error) {
       setMensajeOperacion(`No se pudo finalizar: ${error.message}${String(error.code) === '42501' ? ' (verifica los permisos RLS en Supabase)' : ''}`);
       console.error('Error al finalizar:', error);
