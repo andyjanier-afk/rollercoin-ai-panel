@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { leerExpedicionesExcel, planificarImportacion, consultarRegistrosExistentes } from './importacionExcel';
+import { ordenarExcelRecientePrimero } from './expedicionesActivas';
 
 const ink='#eaf7ff', muted='#a9c7d9', green='#7be6b4', red='#ffadb6', cyan='#8fe4fb', gold='#ffd492';
 const btn=(primary=false)=>({
@@ -22,8 +23,9 @@ function enumerarFilas(revision,plan) {
   for(const r of plan.actualizar) estados.set(r.filaExcel,'actualizar');
   for(const r of plan.ignorar) estados.set(r.filaExcel,'registrada');
   for(const r of plan.conflictos) estados.set(r.filaExcel,'conflicto');
-  return revision.validas.map(r=>({...r,_estado:estados.get(r.filaExcel)||'conflicto'}))
-    .sort((a,b)=>b.filaExcel-a.filaExcel);
+  return ordenarExcelRecientePrimero(
+    revision.validas.map(r=>({...r,_estado:estados.get(r.filaExcel)||'conflicto'}))
+  );
 }
 
 export default function ImportadorExcel({supabase,catalogo,onImportado,onSeleccionar}) {
