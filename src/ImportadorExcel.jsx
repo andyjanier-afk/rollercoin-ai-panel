@@ -120,7 +120,10 @@ export default function ImportadorExcel({ supabase, catalogo, onImportado }) {
 
   const sample = plan ? [
     ...plan.insertar.slice(0,4).map(x=>({...x,_tipo:'Nueva'})),
-    ...plan.actualizar.slice(0,2).map(x=>({...x,_tipo:'Actualizar pendiente'})),
+    ...plan.actualizar.slice(0,2).map(x=>({
+      ...(revision?.validas.find(r=>r.filaExcel===x.filaExcel) || {}),
+      ...x,_tipo:'Actualizar pendiente'
+    })),
     ...plan.conflictos.slice(0,2).map(x=>({...x,_tipo:'Revisar'})),
   ].slice(0,7):[];
 
