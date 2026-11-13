@@ -95,12 +95,33 @@ function bearer() {
   return data.access_token;
 }
 
-async function graph(url) {
-  const response=await fetch(url,{headers:{Authorization:'Bearer '+bearer()}});
+async function graph(url, { enlaceCompartido = false } = {}) {
+  const headers = {
+    Authorization:'Bearer '+bearer(),
+    'Accept':'application/json',
+  };
+  if (enlaceCompartido) {
+    headers['Content-Type'] = 'application/json';
+    // Microsoft recomienda esta cabecera para reconocer enlaces compartidos
+    // sin conceder acceso duradero sobre el archivo.
+    headers['Prefer'] = 'redeemSharingLinkIfNecessary';
+  }
+  const response=await fetch(url,{headers});
   if(!response.ok) {
-    let err={};try{err=await response.json();}catch{}
+    let errorCode='';
+    let errorMessage='';
+    try {
+      const contentType=response.headers.get('content-type') || '';
+      if(contentType.includes('json')) {
+        const body=await response.json();
+        errorCode=String(body.error?.code||'').slice(0,80);
+        errorMessage=String(body.error?.message||'').slice(0,200);
+      }
+    }catch{}
     if(response.status===401){desconectarOneDrive();}
-    throw new Error(err.error?.message || 'Microsoft Graph respondió '+response.status);
+    throw new Error('Microsoft Graph HTTP '+response.status+
+      (errorCode?' · '+errorCode:'')+
+      (errorMessage?' · '+errorMessage:''));
   }
   return response;
 }
@@ -145,14 +166,14 @@ export async function descargarExcelCompartido(enlace) {
     const id=tokenCompartido(url);
     const ruta='https://graph.microsoft.com/v1.0/shares/'+encodeURIComponent(id)+'/driveItem';
     try {
-      const response=await graph(ruta);
+      const response=await graph(ruta, { enlaceCompartido:true });
       const item=await response.json();
       const nombre=String(item.name||'').trim();
       if (!item.file || !/\.(xlsx|xlsm)$/i.test(nombre))
         throw Error('El enlace no apunta directamente a un archivo .xlsx o .xlsm.');
       if (Number(item.size)>15*1024*1024) throw Error('El Excel supera el límite de 15 MB.');
       // Descarga la versión vigente, sin ejecutar VBA ni grabar en OneDrive.
-      const archivo=await graph(ruta+'/content');
+      const archivo=await graph(ruta+'/content', { enlaceCompartido:true });
       const bytes=await archivo.blob();
       if (!bytes.size || bytes.size>15*1024*1024)
         throw Error('No se pudo descargar el Excel o supera los 15 MB.');
