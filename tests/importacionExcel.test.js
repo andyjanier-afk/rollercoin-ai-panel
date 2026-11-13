@@ -77,8 +77,26 @@ test('coincidencia con resultados contradictorios queda bajo revisión, sin sobr
   assert.equal(p.actualizar.length,0);
 });
 
-test('si Excel solo contiene pendiente y la web tiene resultado final, no lo abre de nuevo',()=>{
+test('si Excel solo contiene pendiente y la web tiene resultado final se marca para revisión',()=>{
   const p=planificarImportacion([registro({finalizado:null})],[{...registro(),id:1,finalizado:true}]);
-  assert.equal(p.ignorar.length,1);
+  assert.equal(p.conflictos.length,1);
   assert.equal(p.actualizar.length,0);
+  assert.equal(p.insertar.length,0);
+});
+
+test('no atribuir resultados distintos a pendientes idénticos de manera arbitraria',()=>{
+  const excel=[registro({filaExcel:41,finalizado:true}),registro({filaExcel:42,finalizado:false})];
+  const previos=[{...registro({id:11,finalizado:null}),id:11},{...registro({id:12,finalizado:null}),id:12}];
+  const p=planificarImportacion(excel,previos);
+  assert.equal(p.actualizar.length,0);
+  assert.equal(p.conflictos.length,2);
+  assert.equal(p.insertar.length,0);
+});
+
+test('sí puede completar varios pendientes cuando todos los resultados coinciden',()=>{
+  const excel=[registro({filaExcel:41,finalizado:true}),registro({filaExcel:42,finalizado:true})];
+  const previos=[{...registro({id:11,finalizado:null}),id:11},{...registro({id:12,finalizado:null}),id:12}];
+  const p=planificarImportacion(excel,previos);
+  assert.equal(p.actualizar.length,2);
+  assert.equal(p.conflictos.length,0);
 });
