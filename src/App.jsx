@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { nivelDesdeStats, statsDesdeNivel } from './statsNivel';
 
 // ==========================================
 // CONFIGURACIÓN DE CONEXIÓN
@@ -299,7 +300,7 @@ export default function App() {
       const mapa = MAPAS_OFICIALES.find(x => x.valor === combinado.expedicion) || MAPAS_OFICIALES[0];
       const nivel = Math.max(1, Math.min(50, Number(combinado.nivel) || h.nivelInicial || 1));
       const bono = Number.isFinite(Number(combinado.bono)) ? Number(combinado.bono) : h.bono;
-      const stats = h.baseStats + nivel - 1;
+      const stats = statsDesdeNivel(nivel, h.baseStats);
       return {
         ...combinado, hamster: h.nombre, nivel, stats,
         expedicion: mapa.valor, bono,
@@ -366,7 +367,7 @@ export default function App() {
     let bonoFinal = parseFloat(bonoManual);
     if (isNaN(bonoFinal) || esNuevoHamster) { bonoFinal = hObj.bono; }
 
-    const statsCalc = hObj.baseStats + (lvl - 1);
+    const statsCalc = statsDesdeNivel(lvl, hObj.baseStats);
     const porcentajeCalc = calcularExitoJuego(statsCalc, mObj.dificultad, bonoFinal);
     
     setForm(prev => ({...prev, hamster: nombreH, nivel: lvl, stats: statsCalc, expedicion: mapaValor, porcentaje: porcentajeCalc, bono: bonoFinal}));
@@ -381,6 +382,23 @@ export default function App() {
     if (valor < 1) valor = 1;
     recalcularTodo(form.hamster, valor, form.expedicion, form.bono, false);
   };
+
+  const manejarStats = (e) => {
+    const valor = e.target.value;
+    const h = HAMSTERS_DEFAULT.find(item => item.nombre === form.hamster) || HAMSTERS_DEFAULT[0];
+    const nivel = nivelDesdeStats(valor, h.baseStats);
+    const mapa = resolverMapa(form.expedicion);
+    setForm(prev => ({
+      ...prev, stats: valor, nivel: nivel ?? '',
+      porcentaje: nivel === null ? '' : calcularExitoJuego(Number(valor), mapa.dificultad, Number(prev.bono) || 0),
+    }));
+    versionSimulacion.current += 1;
+    setSimulacion(null);
+  };
+
+  const statsValidos = nivelDesdeStats(form.stats,
+    (HAMSTERS_DEFAULT.find(h => h.nombre === form.hamster) || HAMSTERS_DEFAULT[0]).baseStats
+  ) !== null;
 
   const manejarBono = (e) => {
     let valor = parseFloat(e.target.value);
@@ -398,7 +416,7 @@ export default function App() {
     try {
       const porcentaje = Number(String(form.porcentaje).replace(',', '.'));
       const stats = Number(form.stats);
-      if (!Number.isFinite(porcentaje) || porcentaje < 0 || porcentaje > 100 ||
+      if (!statsValidos || !Number.isFinite(porcentaje) || porcentaje < 0 || porcentaje > 100 ||
           !Number.isFinite(stats) || stats < 0) {
         throw new Error('Las estadísticas o el porcentaje no son válidos.');
       }
@@ -462,7 +480,7 @@ export default function App() {
     try {
       const nivelFinal = Number(form.nivel) || 1;
       const porcentajeLimpio = Number(String(form.porcentaje).replace(',', '.').replace('%', ''));
-      if (!Number.isFinite(porcentajeLimpio) || porcentajeLimpio < 0 || porcentajeLimpio > 100) {
+      if (!statsValidos || !Number.isFinite(porcentajeLimpio) || porcentajeLimpio < 0 || porcentajeLimpio > 100) {
         throw new Error('El porcentaje de la expedición no es válido.');
       }
       const nuevaExpedicion = {
@@ -1227,14 +1245,22 @@ export default function App() {
               </div>
               <div>
                 <label style={styles.label}>STATS</label>
-                <input type="number" value={form.stats} readOnly style={{ ...styles.input, backgroundColor: '#102238', color: '#84d9ef', borderColor: '#38546b', cursor: 'not-allowed', boxShadow: 'none' }} />
+                <input type="number" min="1" step="1" className="premium-input" value={form.stats} onChange={manejarStats}
+                  style={{ ...styles.input, borderColor: statsValidos ? '#38546b' : '#fb7185' }}
+                  aria-invalid={!statsValidos} aria-describedby="ayuda-stats-nivel" />
               </div>
+            </div>
+            <div id="ayuda-stats-nivel" role={statsValidos ? undefined : 'alert'}
+              style={{ color: statsValidos ? '#8bbed0' : '#fda4af', fontSize: '11px', lineHeight: 1.5 }}>
+              {statsValidos
+                ? 'Escribe los STATS reales y el NIVEL se calculará automáticamente. También puedes cambiar el nivel manualmente.'
+                : 'Los stats indicados no corresponden a un nivel de 1 a 50 para este hámster. Corrige el valor antes de continuar.'}
             </div>
 
             <label style={styles.label}>PROBABILIDAD BASE ESTIMADA</label>
-            <input type="text" value={`${form.porcentaje}%`} readOnly style={{ ...styles.input, backgroundColor: '#102238', color: '#74ddb3', borderColor: '#38546b', fontWeight: 'bold', cursor: 'not-allowed', boxShadow: 'none' }} />
+            <input type="text" value={statsValidos ? `${form.porcentaje}%` : '—'} readOnly style={{ ...styles.input, backgroundColor: '#102238', color: '#74ddb3', borderColor: '#38546b', fontWeight: 'bold', cursor: 'not-allowed', boxShadow: 'none' }} />
 
-            <button className="rc-predict-btn" onClick={simular} disabled={simulando}>{simulando ? 'Calculando predicción…' : 'Calcular probabilidad'} <span aria-hidden="true">→</span></button>
+            <button className="rc-predict-btn" onClick={simular} disabled={simulando || !statsValidos}>{simulando ? 'Calculando predicción…' : 'Calcular probabilidad'} <span aria-hidden="true">→</span></button>
           </div>
 
           <div className="card-container">
@@ -1246,7 +1272,7 @@ export default function App() {
               probabilidad={simulacion ? simulacion.probabilidad_ia : null}
               viveIA={simulacion ? simulacion.vive_ia : null}
               onAction={confirmarGuardar}
-              disabled={guardando || procesandoId !== null}
+              disabled={!statsValidos || guardando || procesandoId !== null}
               actionLabel={guardando ? 'GUARDANDO...' : 'Registrar expedición'}
               isPreview={true}
               bonoManual={form.bono} 
