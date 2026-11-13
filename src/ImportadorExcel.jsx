@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { leerExpedicionesExcel, planificarImportacion, consultarRegistrosExistentes, validarFilaExcel } from './importacionExcel';
 import { ordenarExcelRecientePrimero } from './expedicionesActivas';
+import { oneDriveConfigurado, conectarOneDrive, recibirSesionOneDrive, conectadoOneDrive, desconectarOneDrive, buscarExcelEnOneDrive, descargarExcelDeOneDrive } from './onedrive';
 
 const ink='#eaf7ff', muted='#a9c7d9', green='#7be6b4', red='#ffadb6', cyan='#8fe4fb', gold='#ffd492';
 const btn=(primary=false)=>({
@@ -45,6 +46,31 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
   const [aviso,setAviso]=useState('');
   const [fechasCorregidas,setFechasCorregidas]=useState({});
   const [corrigiendoFecha,setCorrigiendoFecha]=useState(false);
+  const [onedriveConectado,setOnedriveConectado]=useState(conectadoOneDrive);
+  const [onedriveResultados,setOnedriveResultados]=useState([]);
+  const [onedriveCargando,setOnedriveCargando]=useState(false);
+  const [onedriveArchivo,setOnedriveArchivo]=useState(null);
+  const [onedriveBusqueda,setOnedriveBusqueda]=useState('expediciones');
+
+  useEffect(()=>{
+    let mounted=true;
+    recibirSesionOneDrive()
+      .then(connected=>{
+        if(mounted && connected){
+          setOnedriveConectado(true);
+          setAbierto(true);
+          setAviso('OneDrive conectado. Busca tu Excel para leerlo directamente de la nube.');
+        }
+      })
+      .catch(error=>{
+        if(mounted){
+          setAbierto(true);
+          setError('No se pudo conectar OneDrive: '+error.message);
+        }
+      });
+    return ()=>{mounted=false;};
+  },[]);
+
 
   const filtradas=useMemo(()=>{
     const q=busqueda.toLowerCase().trim();
@@ -53,8 +79,8 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
         .some(v=>String(v??'').toLowerCase().includes(q))));
   },[filas,busqueda,filtro]);
 
-  async function leer(event) {
-    const file=event.target.files?.[0]; if(!file)return;
+  async function analizarArchivo(file) {
+    if(!file)return;
     setLeyendo(true);setError('');setAviso('');setPlan(null);setRevision(null);setElegida(null);
     setArchivo(file.name);setFiltro('nueva');setBusqueda('');setVisibles(60);setFechasCorregidas({});
     try {
@@ -63,7 +89,39 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
       const nuevoPlan=planificarImportacion(datos.validas,anteriores);
       setRevision(datos);setPlan(nuevoPlan);setFilas(enumerarFilas(datos,nuevoPlan));
     }catch(e){setError('No se pudo revisar el Excel: '+e.message);}
-    finally{setLeyendo(false);event.target.value='';}
+    finally{setLeyendo(false);}
+  }
+
+  async function leer(event){
+    const file=event.target.files?.[0];
+    if(file)await analizarArchivo(file);
+    event.target.value='';
+  }
+
+  async function buscarOneDrive(){
+    setOnedriveCargando(true);setError('');
+    try {
+      const encontrados=await buscarExcelEnOneDrive(onedriveBusqueda);
+      setOnedriveResultados(encontrados);
+      if(!encontrados.length)setAviso('No se encontraron Excel con ese nombre. Prueba con una búsqueda diferente.');
+      else setAviso('Selecciona el Excel correcto para cargar sus filas.');
+    } catch(e){setError('No se pudo buscar en OneDrive: '+e.message);}
+    finally{setOnedriveCargando(false);}
+  }
+
+  async function cargarOneDrive(item) {
+    setOnedriveCargando(true);setError('');
+    try {
+      const file=await descargarExcelDeOneDrive(item.id,item.name);
+      setOnedriveArchivo({id:item.id,name:item.name});
+      await analizarArchivo(file);
+    } catch(e){setError('No se pudo leer el Excel desde OneDrive: '+e.message);}
+    finally{setOnedriveCargando(false);}
+  }
+
+  async function actualizarOneDrive() {
+    if(!onedriveArchivo)return;
+    await cargarOneDrive(onedriveArchivo);
   }
 
   async function confirmarFecha(row) {
@@ -182,6 +240,64 @@ export default function ImportadorExcel({supabase,catalogo,onImportado,onSelecci
             style={{display:'none'}} onChange={leer}/>
           <span style={{fontSize:12,color:muted}}>{archivo||'No se ha seleccionado archivo'}</span>
         </div>
+        <section style={{marginTop:12,background:'#102c41',border:'1px solid #357993',
+          padding:14,borderRadius:10}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,justifyContent:'space-between',flexWrap:'wrap'}}>
+            <div>
+              <strong style={{color:cyan,fontSize:13}}>Excel directamente desde OneDrive</strong>
+              <p style={{fontSize:11,color:muted,margin:'4px 0 0'}}>
+                Solo lectura. Tu archivo y sus macros permanecen intactos.
+              </p>
+            </div>
+            {onedriveConectado&&<button type="button" style={btn()} onClick={()=>{
+              desconectarOneDrive();setOnedriveConectado(false);setOnedriveResultados([]);setOnedriveArchivo(null);
+              setAviso('Sesión de OneDrive cerrada.');
+            }}>Desconectar</button>}
+          </div>
+          {!oneDriveConfigurado()?
+            <p style={{fontSize:12,color:gold,lineHeight:1.6}}>
+              Para activar la conexión Microsoft, el administrador debe configurar
+              VITE_MICROSOFT_CLIENT_ID en Vercel y autorizar el dominio como aplicación SPA.
+              Puedes seguir abriendo el Excel manualmente mientras tanto.
+            </p>
+          :!onedriveConectado?
+            <button type="button" style={{...btn(true),marginTop:12}} onClick={()=>{
+              conectarOneDrive().catch(e=>setError('No se pudo iniciar Microsoft: '+e.message));
+            }}>Conectar mi OneDrive</button>
+          :<>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}>
+              <input type="search" aria-label="Buscar Excel en OneDrive" value={onedriveBusqueda}
+                onChange={e=>setOnedriveBusqueda(e.target.value)}
+                onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void buscarOneDrive();}}}
+                style={{flex:'1 1 180px',minWidth:0,background:'#102b41',color:ink,
+                  border:'1px solid #46718c',padding:'9px 11px',borderRadius:7}}
+                placeholder="Buscar expediciones.xlsm" />
+              <button type="button" style={btn(true)} disabled={onedriveCargando} onClick={buscarOneDrive}>
+                {onedriveCargando?'Consultando…':'Buscar en OneDrive'}
+              </button>
+              {onedriveArchivo&&<button type="button" style={btn()} disabled={onedriveCargando}
+                onClick={actualizarOneDrive}>Actualizar archivo</button>}
+            </div>
+            {onedriveResultados.length>0&&<div style={{display:'grid',gap:6,maxHeight:160,
+              overflowY:'auto',marginTop:11}}>
+              {onedriveResultados.map(item=><div key={item.id}
+                style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,
+                  border:'1px solid #315b77',background:'#17354b',padding:'9px 10px',borderRadius:7}}>
+                <div style={{minWidth:0}}>
+                  <strong style={{fontSize:12,overflowWrap:'anywhere'}}>{item.name}</strong>
+                  <small style={{display:'block',fontSize:10,color:muted}}>
+                    {item.modificado?'Modificado '+new Date(item.modificado).toLocaleString('es-EC'):''}
+                  </small>
+                </div>
+                <button type="button" style={btn(true)} disabled={onedriveCargando}
+                  onClick={()=>cargarOneDrive(item)}>Cargar</button>
+              </div>)}
+            </div>}
+            {onedriveArchivo&&<p style={{fontSize:11,color:green,margin:'9px 0 0'}}>
+              Vinculado: {onedriveArchivo.name}. «Actualizar archivo» lee la versión actual de la nube.
+            </p>}
+          </>}
+        </section>
         {error&&<p role="alert" style={{fontSize:12,color:red}}>{error}</p>}
         {aviso&&<p role="status" style={{fontSize:12,color:green}}>{aviso}</p>}
         {revision&&plan&&<>
