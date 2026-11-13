@@ -1,224 +1,245 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { leerExpedicionesExcel, planificarImportacion, consultarRegistrosExistentes } from './importacionExcel';
 
-const skin = {
-  button: { background:'linear-gradient(135deg,#0a5470,#10364d)', color:'#b5efff', border:'1px solid #388daf',
-    borderRadius:9,padding:'11px 15px',fontWeight:800,fontSize:12,cursor:'pointer' },
-  neutral:{background:'#173049',color:'#d2eaf8',border:'1px solid #456880',borderRadius:8,padding:'9px 13px',fontWeight:700,fontSize:12,cursor:'pointer'},
-  modal:{background:'#0d1f33',color:'#eefaff',width:'min(960px,100%)',maxHeight:'93vh',overflowY:'auto',border:'1px solid #347895',borderRadius:14,padding:23,boxShadow:'0 20px 70px #020915cc'},
-  stat:{background:'#122a42',border:'1px solid #2c5875',borderRadius:10,padding:'12px 16px',flex:'1 1 130px'},
-  table:{width:'100%',borderCollapse:'collapse',fontSize:12},
-  note:{color:'#a8c8db',fontSize:12,lineHeight:1.65},
-  error:{color:'#ffb5ba',fontSize:12,lineHeight:1.6}
+const ink='#eaf7ff', muted='#a9c7d9', green='#7be6b4', red='#ffadb6', cyan='#8fe4fb', gold='#ffd492';
+const btn=(primary=false)=>({
+  background:primary?'linear-gradient(120deg,#36c4e5,#178db3)':'#183b53',
+  color:primary?'#072232':'#d5f0ff',border:'1px solid #4285a1',
+  borderRadius:8,padding:'9px 12px',cursor:'pointer',fontSize:12,fontWeight:800
+});
+const estadoLabel={
+  nueva:['Sin registrar',green],
+  actualizar:['Resultado pendiente',cyan],
+  registrada:['Ya registrada',muted],
+  conflicto:['Revisar coincidencia',gold]
 };
-const fmt = n => Number(n||0).toLocaleString('es-EC');
+const resultadoLabel = r => r === true?'VIVIÓ':r === false?'MURIÓ':'PENDIENTE';
+const resultadoColor = r => r === true?green:r === false?red:muted;
 
-export default function ImportadorExcel({ supabase, catalogo, onImportado }) {
-  const [abierto,setAbierto] = useState(false);
-  const [analizando,setAnalizando] = useState(false);
-  const [importando,setImportando] = useState(false);
-  const [archivo,setArchivo] = useState('');
-  const [revision,setRevision] = useState(null);
-  const [plan,setPlan] = useState(null);
-  const [error,setError] = useState('');
-  const [resultado,setResultado] = useState('');
-  const [progreso,setProgreso] = useState('');
-  const [incluirPendientes,setIncluirPendientes] = useState(false);
-  const inputFile=useRef(null);
+function enumerarFilas(revision,plan) {
+  const estados=new Map();
+  for(const r of plan.insertar) estados.set(r.filaExcel,'nueva');
+  for(const r of plan.actualizar) estados.set(r.filaExcel,'actualizar');
+  for(const r of plan.ignorar) estados.set(r.filaExcel,'registrada');
+  for(const r of plan.conflictos) estados.set(r.filaExcel,'conflicto');
+  return revision.validas.map(r=>({...r,_estado:estados.get(r.filaExcel)||'conflicto'}))
+    .sort((a,b)=>b.filaExcel-a.filaExcel);
+}
 
-  const abrir=()=>{
-    setAbierto(true);
-    setError('');
-    setResultado('');
-  };
+export default function ImportadorExcel({supabase,catalogo,onImportado,onSeleccionar}) {
+  const archivoInput=useRef(null);
+  const [abierto,setAbierto]=useState(false);
+  const [leyendo,setLeyendo]=useState(false);
+  const [guardando,setGuardando]=useState(false);
+  const [archivo,setArchivo]=useState('');
+  const [revision,setRevision]=useState(null);
+  const [plan,setPlan]=useState(null);
+  const [filas,setFilas]=useState([]);
+  const [filtro,setFiltro]=useState('nueva');
+  const [busqueda,setBusqueda]=useState('');
+  const [visibles,setVisibles]=useState(60);
+  const [elegida,setElegida]=useState(null);
+  const [error,setError]=useState('');
+  const [aviso,setAviso]=useState('');
 
-  const procesar = async event => {
-    const file=event.target.files?.[0];
-    if (!file) return;
-    setAnalizando(true);setError('');setResultado('');setPlan(null);setRevision(null);
-    setArchivo(file.name);setIncluirPendientes(false);
+  const filtradas=useMemo(()=>{
+    const q=busqueda.toLowerCase().trim();
+    return filas.filter(r=>(filtro==='todas'||r._estado===filtro)
+      && (!q||[r.hamster,r.expedicion,r.fecha,r.stats,r.filaExcel]
+        .some(v=>String(v??'').toLowerCase().includes(q))));
+  },[filas,busqueda,filtro]);
+
+  async function leer(event) {
+    const file=event.target.files?.[0]; if(!file)return;
+    setLeyendo(true);setError('');setAviso('');setPlan(null);setRevision(null);setElegida(null);
+    setArchivo(file.name);setFiltro('nueva');setBusqueda('');setVisibles(60);
     try {
-      const dato=await leerExpedicionesExcel(file,catalogo);
-      const existentes=await consultarRegistrosExistentes(supabase);
-      const planificado=planificarImportacion(dato.validas,existentes);
-      setRevision({...dato, existentes:existentes.length});
-      setPlan(planificado);
-    } catch(err) {
-      setError('No se pudo analizar el archivo: '+err.message);
-    } finally {
-      setAnalizando(false);
-      event.target.value='';
-    }
-  };
+      const datos=await leerExpedicionesExcel(file,catalogo);
+      const anteriores=await consultarRegistrosExistentes(supabase);
+      const nuevoPlan=planificarImportacion(datos.validas,anteriores);
+      setRevision(datos);setPlan(nuevoPlan);setFilas(enumerarFilas(datos,nuevoPlan));
+    }catch(e){setError('No se pudo revisar el Excel: '+e.message);}
+    finally{setLeyendo(false);event.target.value='';}
+  }
 
-  const importar = async () => {
-    if(!plan||importando)return;
-    const actualizaciones=incluirPendientes?plan.actualizar:[];
-    const total=plan.insertar.length+actualizaciones.length;
-    if (!total) {setResultado('No hay nuevas expediciones seleccionadas.');return;}
-    if(!window.confirm('¿Importar '+plan.insertar.length+' expediciones NUEVAS'
-      +(incluirPendientes?' y actualizar '+actualizaciones.length+' resultados pendientes':'')
-      +' en Supabase? La importación se hará en tu base de datos real.'))return;
-    setImportando(true);setError('');setResultado('');
-    let creadas=0,actualizadas=0,fallos=0;
-    const incidencias=[];
-    try {
-      // Verificar nuevamente antes de importar para evitar cargas duplicadas al
-      // utilizar simultáneamente varias ventanas o computadoras.
-      const existentes=await consultarRegistrosExistentes(supabase);
-      const verificado=planificarImportacion(revision.validas,existentes);
-      const preAprobados = new Map(plan.insertar.map(x=>[x.filaExcel,x]));
-      const nuevos=verificado.insertar.filter(x=>preAprobados.has(x.filaExcel));
-      const actualizacionesSeguras=incluirPendientes
-        ?verificado.actualizar.filter(x=>actualizaciones.some(y=>y.filaExcel===x.filaExcel))
-        :[];
-      if (!nuevos.length&&!actualizacionesSeguras.length) {
-        setResultado('No quedan registros nuevos por importar; Supabase ya contiene esos resultados.');
-        setPlan(verificado);
-        return;
-      }
-      const cantidad=nuevos.length+actualizacionesSeguras.length;
-      for (let n=0;n<nuevos.length;n+=25) {
-        const lote=nuevos.slice(n,n+25);
-        setProgreso('Guardando expediciones nuevas: '+Math.min(n+25,nuevos.length)+'/'+nuevos.length);
-        const {error:err}=await supabase.from('expediciones').insert(lote.map(item=>({
-          fecha:item.fecha,hamster:item.hamster,nivel:item.nivel,stats:item.stats,
-          expedicion:item.expedicion,porcentaje:item.porcentaje,finalizado:item.finalizado
-          // Sin vive_ia ni probabilidad_ia: no inventar aciertos históricos.
-        })));
-        if(err) {fallos+=lote.length;incidencias.push('Lote '+(n+1)+': '+err.message);break;}
-        creadas+=lote.length;
-      }
-      if(fallos===0){
-        for(const item of actualizacionesSeguras) {
-          setProgreso('Completando resultados pendientes: '+(actualizadas+1)+'/'+actualizacionesSeguras.length);
-          const {data,error:err}=await supabase.from('expediciones')
-            .update({finalizado:item.finalizado})
-            .eq('id',item.id).is('finalizado',null).select('id');
-          if(err || !data?.length) {
-            fallos+=1;incidencias.push('Fila Excel '+item.filaExcel+': '+(err?.message||'Registro ya finalizado'));
-          } else actualizadas+=1;
-        }
-      }
-      setResultado(
-        'Importación finalizada: '+fmt(creadas)+' nuevas, '+fmt(actualizadas)+' resultados actualizados'
-        +(fallos?' y '+fmt(fallos)+' operaciones sin completar.':' sin errores.')
-      );
-      setProgreso('');
-      if(incidencias.length)setError(incidencias.slice(0,4).join(' · '));
-      // Recalcular el plan a partir de la base actual tras una importación parcial o total.
-      const reconsulta=await consultarRegistrosExistentes(supabase);
-      setPlan(planificarImportacion(revision.validas,reconsulta));
-      if(creadas||actualizadas)onImportado();
-    }catch(err){
-      setError('La importación se interrumpió: '+err.message
-        +(creadas?' Se guardaron '+creadas+' registros antes del problema; vuelve a analizar el Excel para continuar.':''));
-    }finally{
-      setImportando(false);setProgreso('');
-    }
-  };
+  function ponerEnFormulario(fila) {
+    onSeleccionar(fila);
+    setAbierto(false);
+  }
 
-  const sample = plan ? [
-    ...plan.insertar.slice(0,4).map(x=>({...x,_tipo:'Nueva'})),
-    ...plan.actualizar.slice(0,2).map(x=>({
-      ...(revision?.validas.find(r=>r.filaExcel===x.filaExcel) || {}),
-      ...x,_tipo:'Actualizar pendiente'
-    })),
-    ...plan.conflictos.slice(0,2).map(x=>({...x,_tipo:'Revisar'})),
-  ].slice(0,7):[];
+  async function guardarUna(fila) {
+    if(!fila||guardando)return;
+    if(!['nueva','actualizar'].includes(fila._estado))return;
+    const confirmacion=
+      'Confirmar una sola expedición:\n\n'+fila.hamster+' · '+fila.expedicion+
+      '\nFecha: '+fila.fecha+' · STATS: '+fila.stats+
+      '\nPorcentaje del Excel: '+fila.porcentaje+'%'+
+      '\nResultado real: '+resultadoLabel(fila.finalizado)+
+      '\n\n¿Son correctos estos datos?';
+    if(!window.confirm(confirmacion))return;
+    setGuardando(true);setError('');setAviso('');
+    try{
+      // Revisión nueva de la base antes de guardar: no asumir que
+      // las filas siguen pendientes desde que se abrió el cuadro.
+      const anteriores=await consultarRegistrosExistentes(supabase);
+      const vigente=planificarImportacion(revision.validas,anteriores);
+      const nuevo=vigente.insertar.find(r=>r.filaExcel===fila.filaExcel);
+      const pendiente=vigente.actualizar.find(r=>r.filaExcel===fila.filaExcel);
+      if(fila._estado==='nueva'&&nuevo){
+        const {data,error:e}=await supabase.from('expediciones').insert([{
+          fecha:nuevo.fecha,hamster:nuevo.hamster,stats:nuevo.stats,
+          nivel:nuevo.nivel,expedicion:nuevo.expedicion,
+          porcentaje:nuevo.porcentaje,finalizado:nuevo.finalizado
+          // Nunca registrar predicciones IA falsas sobre expediciones antiguas.
+        }]).select('id').single();
+        if(e)throw e;
+        if(!data?.id)throw Error('Supabase no confirmó el registro.');
+        setAviso('Expedición '+data.id+' guardada correctamente ('+resultadoLabel(nuevo.finalizado)+').');
+      }else if(fila._estado==='actualizar'&&pendiente){
+        const {data,error:e}=await supabase.from('expediciones')
+          .update({finalizado:pendiente.finalizado})
+          .eq('id',pendiente.id).is('finalizado',null).select('id');
+        if(e)throw e;
+        if(!data?.length)throw Error('El registro dejó de estar pendiente.');
+        setAviso('Resultado de la expedición '+pendiente.id+' actualizado sin alterar su predicción.');
+      }else{
+        throw Error('La fila cambió desde que abriste el Excel. No se registró para evitar duplicados.');
+      }
+      const otraLectura=await consultarRegistrosExistentes(supabase);
+      const otroPlan=planificarImportacion(revision.validas,otraLectura);
+      setPlan(otroPlan);setFilas(enumerarFilas(revision,otroPlan));setElegida(null);
+      void onImportado();
+    }catch(e){setError('No se pudo guardar: '+e.message);}
+    finally{setGuardando(false);}
+  }
 
   return <>
-    <button type="button" style={skin.button} onClick={abrir}> <span aria-hidden="true">⇧</span> Importar Excel (.xlsm/.xlsx)</button>
+    <button type="button" style={btn(true)} onClick={()=>{setAbierto(true);setError('');}}>
+      ▤ Seleccionar expedición del Excel
+    </button>
     {abierto&&<div className="modal-overlay" style={{zIndex:20002,padding:12}}
-      onMouseDown={e=>{if(e.target===e.currentTarget&&!importando)setAbierto(false);}}>
-      <div role="dialog" aria-modal="true" aria-label="Importar expediciones desde Excel"
-        onMouseDown={e=>e.stopPropagation()} style={skin.modal}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
-          <div><small style={{color:'#62d5f2',fontWeight:800,letterSpacing:1.1}}>ROLLERCOIN · IMPORTACIÓN SEGURA</small>
-            <h2 style={{margin:'7px 0',fontSize:22}}>Importar expediciones del Excel</h2></div>
-          <button type="button" onClick={()=>setAbierto(false)} disabled={importando} style={skin.neutral}>Cerrar ✕</button>
-        </div>
-        <p style={skin.note}>Acepta tu archivo con macros (<strong>.xlsm</strong>) o .xlsx. Se leen solamente las celdas
-          de Fecha, stats, Hamster, expedicion, %, finalizado. No se ejecutan macros ni se modifica el Excel.</p>
-        <div style={{padding:17,border:'1px dashed #4c98b5',borderRadius:11,background:'#122b40',display:'flex',gap:12,alignItems:'center',flexWrap:'wrap'}}>
-          <button type="button" style={skin.button} disabled={analizando||importando} onClick={()=>inputFile.current?.click()}>
-            {analizando?'Analizando…':'Seleccionar archivo Excel'}
-          </button>
-          <input type="file" ref={inputFile} accept=".xlsm,.xlsx" onChange={procesar} style={{display:'none'}} />
-          <span style={{color:'#a8cade',fontSize:12}}>{archivo||'Ningún archivo seleccionado'}</span>
-        </div>
-        {error&&<p style={skin.error} role="alert">{error}</p>}
-        {resultado&&<p style={{fontSize:13,color:'#74e3b8'}} role="status">{resultado}</p>}
-        {progreso&&<p style={skin.note} role="status">{progreso}</p>}
-        {revision&&plan&&<div style={{marginTop:17}}>
-          <div style={{display:'flex',flexWrap:'wrap',gap:9,marginBottom:14}}>
-            {[
-              ['Filas Excel',revision.total,'#e5f5ff'],
-              ['Para importar',plan.insertar.length,'#6fe4b2'],
-              ['Ya registradas',plan.ignorar.length,'#adc5d7'],
-              ['Pendientes por completar',plan.actualizar.length,'#8ed7f2'],
-              ['Conflictos',plan.conflictos.length,'#ffcf8c'],
-              ['Filas inválidas',revision.invalidas.length,'#ff9ca5'],
-            ].map(([title,num,color])=><div key={title} style={skin.stat}>
-                <div style={{fontSize:11,color:'#a3c1d4'}}>{title}</div>
-                <strong style={{fontSize:22,color}}>{fmt(num)}</strong>
-              </div>)}
+      onMouseDown={e=>{if(e.target===e.currentTarget&&!guardando)setAbierto(false);}}>
+      <div role="dialog" aria-modal="true" aria-label="Seleccionar expedición del Excel"
+        onMouseDown={e=>e.stopPropagation()}
+        style={{background:'#0e2135',color:ink,padding:22,width:'min(1060px,100%)',
+          maxHeight:'94vh',overflowY:'auto',border:'1px solid #387e9b',borderRadius:14}}>
+        <div style={{display:'flex',gap:10,alignItems:'center',justifyContent:'space-between',flexWrap:'wrap'}}>
+          <div>
+            <small style={{color:cyan,fontWeight:800,letterSpacing:1.1}}>ROLLERCOIN AI · SELECCIÓN MANUAL</small>
+            <h2 style={{fontSize:22,margin:'5px 0'}}>Elegir expedición del Excel</h2>
           </div>
-          {sample.length>0&&<div style={{overflowX:'auto',border:'1px solid #345970',borderRadius:10}}>
-            <table style={skin.table}>
-              <thead><tr style={{background:'#183b55',textAlign:'left'}}>
-                {['Fila','Acción','Fecha','Hámster','Mapa','Stats','Resultado'].map(h=>
-                  <th key={h} style={{padding:'11px 9px'}}>{h}</th>)}
-              </tr></thead>
-              <tbody>{sample.map((r,i)=><tr key={r.filaExcel+'-'+i} style={{borderTop:'1px solid #304d64'}}>
-                <td style={{padding:'9px'}}>{r.filaExcel}</td><td style={{padding:'9px'}}>{r._tipo}</td>
-                <td style={{padding:'9px'}}>{r.fecha}</td><td style={{padding:'9px'}}>{r.hamster}</td>
-                <td style={{padding:'9px'}}>{r.expedicion}</td><td style={{padding:'9px'}}>{r.stats}</td>
-                <td style={{padding:'9px',color:r.finalizado===true?'#78e7b1':r.finalizado===false?'#ff9ca5':'#bfd4e0'}}>
-                  {r.finalizado===true?'Vivió':r.finalizado===false?'Murió':'Pendiente'}
+          <button type="button" style={btn()} disabled={guardando} onClick={()=>setAbierto(false)}>Cerrar ✕</button>
+        </div>
+        <p style={{color:muted,fontSize:12,lineHeight:1.7}}>
+          Selecciona tu archivo, busca una expedición y elige qué hacer con esa fila.
+          <strong style={{color:ink}}> No se importa todo el Excel ni se ejecutan macros.</strong>
+        </p>
+        <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',
+          border:'1px dashed #47829f',borderRadius:10,padding:14,background:'#132c43'}}>
+          <button type="button" style={btn(true)} disabled={leyendo||guardando}
+            onClick={()=>archivoInput.current?.click()}>{leyendo?'Leyendo…':'Abrir Excel (.xlsm/.xlsx)'}</button>
+          <input type="file" ref={archivoInput} accept=".xlsm,.xlsx"
+            style={{display:'none'}} onChange={leer}/>
+          <span style={{fontSize:12,color:muted}}>{archivo||'No se ha seleccionado archivo'}</span>
+        </div>
+        {error&&<p role="alert" style={{fontSize:12,color:red}}>{error}</p>}
+        {aviso&&<p role="status" style={{fontSize:12,color:green}}>{aviso}</p>}
+        {revision&&plan&&<>
+          <div style={{display:'flex',gap:9,flexWrap:'wrap',margin:'17px 0'}}>
+            {[
+              ['Nuevas',plan.insertar.length,green],
+              ['Ya registradas',plan.ignorar.length,muted],
+              ['Resultados pendientes',plan.actualizar.length,cyan],
+              ['Coincidencias dudosas',plan.conflictos.length,gold],
+              ['Filas con errores',revision.invalidas.length,red]
+            ].map(([label,n,color])=><div key={label} style={{background:'#142f46',
+              border:'1px solid #315d78',borderRadius:9,padding:'11px 12px',flex:'1 1 135px'}}>
+              <small style={{display:'block',color:muted,fontSize:10}}>{label}</small>
+              <strong style={{fontSize:21,color}}>{n}</strong>
+            </div>)}
+          </div>
+          <div style={{display:'flex',gap:9,flexWrap:'wrap',marginBottom:12}}>
+            <input type="search" value={busqueda} placeholder="Buscar hámster, fecha, mapa, STATS o fila…"
+              onChange={e=>{setBusqueda(e.target.value);setVisibles(60);}}
+              style={{minWidth:0,flex:'1 1 250px',padding:11,borderRadius:8,
+                background:'#102a42',color:ink,border:'1px solid #46728d'}}/>
+            <select aria-label="Filtrar por estado" value={filtro}
+              onChange={e=>{setFiltro(e.target.value);setElegida(null);setVisibles(60);}}
+              style={{padding:11,background:'#14334b',color:ink,border:'1px solid #46728d',borderRadius:8}}>
+              <option value="nueva">Solo nuevas</option>
+              <option value="todas">Todas las filas válidas</option>
+              <option value="actualizar">Completar resultado</option>
+              <option value="registrada">Ya registradas</option>
+              <option value="conflicto">Revisar coincidencias</option>
+            </select>
+          </div>
+          <p style={{fontSize:11,color:muted}}>Mostrando {Math.min(filtradas.length,visibles)} de {filtradas.length} filas.</p>
+          <div style={{border:'1px solid #365873',borderRadius:9,overflowX:'auto'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+              <thead style={{background:'#1c435d',textAlign:'left'}}>
+                <tr>{['Fila','Fecha','Hámster','Mapa','STATS','%','Resultado','Estado',''].map(h=>
+                  <th key={h} style={{padding:'11px 9px',whiteSpace:'nowrap'}}>{h}</th>)}</tr>
+              </thead>
+              <tbody>{filtradas.slice(0,visibles).map(row=><tr key={row.filaExcel}
+                style={{borderTop:'1px solid #2c4e65',background:elegida?.filaExcel===row.filaExcel?'#174765':'transparent'}}>
+                <td style={{padding:'9px'}}>{row.filaExcel}</td>
+                <td style={{padding:'9px',whiteSpace:'nowrap'}}>{row.fecha}</td>
+                <td style={{padding:'9px',fontWeight:750,minWidth:106}}>{row.hamster}</td>
+                <td style={{padding:'9px',whiteSpace:'nowrap'}}>{row.expedicion}</td>
+                <td style={{padding:'9px'}}>{row.stats}</td>
+                <td style={{padding:'9px'}}>{row.porcentaje}%</td>
+                <td style={{padding:'9px',color:resultadoColor(row.finalizado)}}>{resultadoLabel(row.finalizado)}</td>
+                <td style={{padding:'9px',color:estadoLabel[row._estado]?.[1],fontSize:11}}>{estadoLabel[row._estado]?.[0]}</td>
+                <td style={{padding:'9px'}}>
+                  <button type="button" style={{...btn(),padding:'7px 10px'}}
+                    onClick={()=>setElegida(row)}>
+                    {elegida?.filaExcel===row.filaExcel?'✓ Elegida':'Elegir'}
+                  </button>
                 </td>
               </tr>)}</tbody>
             </table>
-          </div>}
+            {!filtradas.length&&<p style={{color:muted,fontSize:12,textAlign:'center',padding:18}}>No hay coincidencias.</p>}
+          </div>
+          {filtradas.length>visibles&&<button type="button" style={{...btn(),marginTop:10}}
+            onClick={()=>setVisibles(v=>v+60)}>Mostrar 60 más</button>}
           {revision.invalidas.length>0&&<details style={{marginTop:15}}>
-            <summary style={{cursor:'pointer',color:'#ffbdc4',fontSize:12,fontWeight:750}}>
-              Ver {revision.invalidas.length} filas con errores (NO se importan)
+            <summary style={{fontSize:12,color:red,cursor:'pointer',fontWeight:750}}>
+              Ver {revision.invalidas.length} filas inválidas (no se registrarán)
             </summary>
-            <div style={{maxHeight:160,overflowY:'auto',marginTop:9}}>
-              {revision.invalidas.slice(0,80).map(x=><div key={x.filaExcel} style={skin.error}>
-                Fila {x.filaExcel}: {x.errores.join(' · ')}
+            <div style={{maxHeight:175,overflowY:'auto'}}>
+              {revision.invalidas.map(r=><div key={r.filaExcel} style={{fontSize:11,color:red,padding:'3px 0'}}>
+                Fila {r.filaExcel}: {r.errores.join(' · ')}
               </div>)}
             </div>
           </details>}
-          {plan.conflictos.length>0&&<details style={{marginTop:12}}>
-            <summary style={{cursor:'pointer',color:'#ffd096',fontSize:12,fontWeight:750}}>
-              Ver {plan.conflictos.length} coincidencias ambiguas (NO se importan)
-            </summary>
-            <div style={{maxHeight:160,overflowY:'auto',marginTop:9}}>
-              {plan.conflictos.slice(0,80).map(x=><div key={x.filaExcel} style={skin.note}>Fila {x.filaExcel}: {x.motivo}</div>)}
+          {elegida&&<div style={{marginTop:17,padding:17,border:'1px solid #4393b4',borderRadius:12,
+            background:'#113047'}}>
+            <div style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
+              <strong>Expedición seleccionada · fila {elegida.filaExcel}</strong>
+              <span style={{fontSize:11,color:estadoLabel[elegida._estado]?.[1]}}>{estadoLabel[elegida._estado]?.[0]}</span>
             </div>
-          </details>}
-          {plan.actualizar.length>0&&<label style={{display:'flex',alignItems:'flex-start',gap:9,fontSize:12,color:'#c9e4f3',marginTop:18}}>
-            <input type="checkbox" checked={incluirPendientes} disabled={importando}
-              onChange={e=>setIncluirPendientes(e.target.checked)}/>
-            <span>También completar <strong>{plan.actualizar.length} resultados pendientes</strong> en Supabase usando los resultados del Excel.
-              No se modificarán predicciones guardadas.</span>
-          </label>}
-          <p style={{...skin.note,marginTop:13}}>
-            Las expediciones antiguas se registran <strong>sin predicción IA histórica</strong>: entrenan el modelo,
-            pero no se cuentan como aciertos o fallos de pronósticos que nunca se hicieron.
-            La detección de repetidos compara fecha, hámster, mapa y stats, respetando cuántas veces aparece cada combinación.
-            Las coincidencias ambiguas quedan pendientes de revisión manual.
-          </p>
-          <div style={{display:'flex',justifyContent:'flex-end',gap:9,flexWrap:'wrap',marginTop:15}}>
-            <button type="button" style={skin.neutral} onClick={()=>setAbierto(false)} disabled={importando}>Cancelar</button>
-            <button type="button" style={{...skin.button,opacity:importando||(!plan.insertar.length&&!(incluirPendientes&&plan.actualizar.length))?.6:1}}
-              disabled={importando||(!plan.insertar.length&&!(incluirPendientes&&plan.actualizar.length))}
-              onClick={importar}>
-              {importando?'Importando…': 'Confirmar '+(plan.insertar.length+(incluirPendientes?plan.actualizar.length:0))+' registros'}
-            </button>
-          </div>
-        </div>}
+            <p style={{fontSize:12,color:muted,lineHeight:1.7}}>
+              <strong style={{color:ink}}>{elegida.hamster}</strong> · {elegida.expedicion} · Nivel {elegida.nivel}
+              · {elegida.stats} STATS · {elegida.porcentaje}% · {elegida.fecha} ·
+              <strong style={{color:resultadoColor(elegida.finalizado)}}> {resultadoLabel(elegida.finalizado)}</strong>
+            </p>
+            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+              <button type="button" style={btn()} disabled={guardando} onClick={()=>ponerEnFormulario(elegida)}>
+                Rellenar formulario de la página
+              </button>
+              <button type="button" style={{...btn(true),
+                opacity:['nueva','actualizar'].includes(elegida._estado)?1:.45}}
+                disabled={guardando||!['nueva','actualizar'].includes(elegida._estado)}
+                onClick={()=>guardarUna(elegida)}>
+                {guardando?'Registrando…':elegida._estado==='actualizar'?'Completar este resultado':'Registrar solo esta fila'}
+              </button>
+            </div>
+            <p style={{fontSize:11,color:muted,lineHeight:1.6}}>
+              Rellenar formulario no guarda nada. Registrar una fila requiere confirmación,
+              y no genera predicciones IA históricas inventadas.
+            </p>
+          </div>}
+        </>}
       </div>
     </div>}
   </>;
